@@ -2,25 +2,150 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ALTO</title>
-<style>
-  :root{color-scheme:light dark}
-  body{margin:0;min-height:100vh;display:grid;place-items:center;
-       font-family:ui-monospace,"SF Mono",Menlo,monospace;
-       background:#0D1216;color:#E7EDF0;text-align:center;padding:24px}
-  h1{font-size:14px;letter-spacing:.24em;font-weight:600;color:#5BC4B4;margin:0 0 20px}
-  p{font-size:14px;line-height:1.7;color:#7E909C;max-width:44ch;margin:0 0 10px}
-  a{color:#5BC4B4}
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ALTO — Gate Optimization for Alaska Airlines at SEA</title>
+<meta name="description" content="Integer programming and minimum-cost network flow applied to gate scheduling at Seattle-Tacoma. Disrupt a real day and see what it costs, and how much re-optimizing recovers.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div>
-    <h1>ALTO</h1>
-    <p>Aviation Logistics &amp; Terminal Optimizer</p>
-    <p>Gate scheduling for Alaska Airlines at Seattle&#8209;Tacoma.</p>
-    <p style="margin-top:24px">The solver is live. The interface lands shortly.</p>
-    <p><a href="/api/docs">/api/docs</a> &nbsp;·&nbsp; <a href="/api/health">/api/health</a></p>
-  </div>
+
+<header class="masthead">
+  <h1>ALTO</h1>
+  <span class="tagline">Gate scheduling optimization · Alaska Airlines · Seattle&#8209;Tacoma</span>
+  <nav>
+    <a href="methods.html">Methods</a>
+    <a href="https://github.com/etroesh/alto">Source</a>
+    <a href="/api/docs">API</a>
+  </nav>
+</header>
+
+<div class="shell">
+
+  <!-- ===================== LEFT: the controls ===================== -->
+  <aside>
+    <section class="panel">
+      <h2>Scenario</h2>
+      <div class="panel-body">
+
+        <div class="control">
+          <label for="date-input">Day</label>
+          <input type="date" id="date-input" value="2023-07-15" min="2023-01-01" max="2023-12-31">
+          <p class="hint">Any day of 2023. Alaska ran 132 to 256 aircraft turns a day at SEA.</p>
+        </div>
+
+        <div class="control">
+          <label for="tail-select">Delay an aircraft</label>
+          <select id="tail-select"><option>Pick a day first</option></select>
+          <div style="display:flex; gap:8px; align-items:center; margin-top:7px">
+            <input type="number" id="delay-minutes" value="60" min="1" max="600" step="5" style="width:80px">
+            <span class="hint" style="margin:0">minutes late</span>
+            <button class="tiny" id="add-delay" style="margin-left:auto">Add</button>
+          </div>
+          <div id="delay-list"></div>
+        </div>
+
+        <div class="control">
+          <label>Close gates</label>
+          <div class="chips" id="concourse-chips">
+            <button class="chip" data-concourse="C" aria-pressed="false">Concourse C · 27</button>
+            <button class="chip" data-concourse="N" aria-pressed="false">North Satellite · 20</button>
+            <button class="chip" data-concourse="D" aria-pressed="false">Concourse D · 10</button>
+          </div>
+          <p class="hint">The North Satellite has closed for construction in real life.</p>
+        </div>
+
+        <div class="control">
+          <label for="delay-cost">Delay cost <span id="delay-cost-value">$98.41</span> / minute</label>
+          <input type="range" id="delay-cost" min="40" max="200" step="1" value="98">
+          <p class="hint">Airlines for America put direct aircraft operating cost at $98.41 per block minute in 2025.</p>
+        </div>
+
+        <div class="control">
+          <label for="propagation">Delay propagation <span id="propagation-value">0.75</span></label>
+          <input type="range" id="propagation" min="0" max="1" step="0.05" value="0.75">
+          <p class="hint">How much of a delay carries into the aircraft's next flight once slack is used up. This one is an assumption, not a published figure.</p>
+        </div>
+
+        <div class="control">
+          <label style="display:flex; align-items:center; gap:8px; font-weight:500">
+            <input type="checkbox" id="exact-solver" style="width:auto">
+            Solve exactly
+          </label>
+          <p class="hint">Runs the integer program instead of the network flow model. About 9% less passenger walking, roughly 40&times; slower. Gate count is optimal either way.</p>
+        </div>
+
+        <button class="primary" id="run">Run scenario</button>
+      </div>
+    </section>
+  </aside>
+
+  <!-- ===================== RIGHT: the results ===================== -->
+  <main>
+
+    <section class="panel" style="margin-bottom:16px">
+      <h2>2023 at a glance — gates needed each day</h2>
+      <div class="year">
+        <svg class="year-strip" id="year-strip" role="img" aria-label="Gates required on each day of 2023"></svg>
+      </div>
+      <p class="status" id="year-status">Loading the year…</p>
+    </section>
+
+    <div class="figures" id="figures">
+      <div class="figure"><div class="value" id="fig-disruption">—</div><div class="label">Cost of the disruption</div></div>
+      <div class="figure"><div class="value recovered" id="fig-recovered">—</div><div class="label">Recovered by re-optimizing</div></div>
+      <div class="figure"><div class="value" id="fig-share">—</div><div class="label">Share of the damage recovered</div></div>
+      <div class="figure"><div class="value" id="fig-moved">—</div><div class="label">Aircraft moved to a new gate</div></div>
+    </div>
+
+    <section class="panel" style="margin-bottom:16px">
+      <h2>Where the money goes</h2>
+      <div class="panel-body">
+        <!-- Six columns of figures will not fit a phone. The wrapper lets the
+             table scroll inside itself rather than pushing the whole page
+             sideways. -->
+        <div class="tbl-scroll">
+        <table class="breakdown" id="breakdown">
+          <thead>
+            <tr>
+              <th>Scenario</th>
+              <th>Delay</th>
+              <th>Idle gates</th>
+              <th>Towing</th>
+              <th>Total</th>
+              <th>Gates</th>
+            </tr>
+          </thead>
+          <tbody id="breakdown-body">
+            <tr><td colspan="6" style="color:var(--muted);text-align:left">Run a scenario to fill this in.</td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 id="chart-title">Gate occupancy</h2>
+      <div class="legend">
+        <span><i style="background:var(--block)"></i> at gate</span>
+        <span><i style="background:var(--block-tow)"></i> towed off-gate</span>
+        <span><i style="background:var(--moved)"></i> moved to a different gate</span>
+        <span><i style="background:var(--delayed)"></i> running late</span>
+      </div>
+      <div class="chart-wrap">
+        <svg class="gantt" id="gantt" role="img" aria-labelledby="chart-title"></svg>
+      </div>
+      <p class="status" id="chart-status">Loading…</p>
+    </section>
+
+    <p class="sr-only" id="live-region" role="status" aria-live="polite"></p>
+  </main>
+</div>
+
+<div class="tooltip hidden" id="tooltip"></div>
+
+<script src="app.js"></script>
 </body>
 </html>

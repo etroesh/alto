@@ -1,0 +1,348 @@
+/* ============================================================================
+   ALTO - stylesheet
+   ============================================================================
+   Organised in the order the page is built:
+     1. tokens      every colour and size, named, in one place
+     2. layout      the overall page frame
+     3. controls    the panel on the left
+     4. results     the cost figures
+     5. chart       the gate occupancy Gantt
+     6. responsive  what changes on a narrow screen
+   ========================================================================= */
+
+/* ---- 1. TOKENS ---------------------------------------------------------- */
+/* Change a colour here and it changes everywhere it is used. Nothing below
+   this block contains a raw colour value. */
+
+:root {
+  --paper:      #F1F4F5;
+  --card:       #FBFCFC;
+  --raised:     #FFFFFF;
+  --ink:        #141A20;
+  --ink-2:      #3D4A55;
+  --muted:      #697A87;
+  --rule:       #D3DBDF;
+  --rule-2:     #E4EAEC;
+
+  --accent:     #0F5A53;
+  --accent-soft:#DCEAE7;
+
+  /* The two data colours. Both were checked with a colour-vision validator
+     against this exact background: they stay distinguishable for the common
+     forms of colour blindness, and each clears 3:1 contrast on the surface.
+     They are never the only signal - moved aircraft also get a border and a
+     legend entry. */
+  --moved:      #008C7E;   /* this aircraft changed gate */
+  --delayed:    #C25A0F;   /* this aircraft is running late */
+
+  --block:      #8FA3AF;   /* an ordinary, unchanged aircraft - deliberately recessive */
+  --block-tow:  #B9C6CE;   /* off-gate, towed to a hardstand */
+
+  --good:       #2E6B4F;
+  --shadow:     0 1px 2px rgba(20,26,32,.05), 0 8px 24px -16px rgba(20,26,32,.28);
+
+  --radius:     4px;
+  --gap:        16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:      #0D1216;
+    --card:       #141B21;
+    --raised:     #1A232A;
+    --ink:        #E7EDF0;
+    --ink-2:      #B4C2CB;
+    --muted:      #7E909C;
+    --rule:       #26323A;
+    --rule-2:     #1D272E;
+    --accent:     #5BC4B4;
+    --accent-soft:#12332F;
+    /* Re-chosen for the dark surface and re-validated there, not lightened
+       versions of the light-mode pair. */
+    --moved:      #26A997;
+    --delayed:    #CE7433;
+    --block:      #55666F;
+    --block-tow:  #3A484F;
+    --good:       #6FC79A;
+    --shadow:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper:#0D1216; --card:#141B21; --raised:#1A232A;
+  --ink:#E7EDF0; --ink-2:#B4C2CB; --muted:#7E909C;
+  --rule:#26323A; --rule-2:#1D272E;
+  --accent:#5BC4B4; --accent-soft:#12332F;
+  --moved:#26A997; --delayed:#CE7433;
+  --block:#55666F; --block-tow:#3A484F;
+  --good:#6FC79A;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+}
+
+/* ---- 2. LAYOUT ---------------------------------------------------------- */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.masthead {
+  border-bottom: 1px solid var(--rule);
+  padding: 22px 28px 18px;
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.masthead h1 {
+  font-family: "Archivo", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -.02em;
+  margin: 0;
+}
+.masthead .tagline { color: var(--muted); font-size: 14px; }
+.masthead nav { margin-left: auto; display: flex; gap: 18px; font-size: 13px; }
+.masthead nav a { color: var(--accent); text-decoration: none; }
+.masthead nav a:hover { text-decoration: underline; }
+
+.shell {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: var(--gap);
+  padding: var(--gap) 28px 60px;
+  align-items: start;
+}
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.panel > h2 {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+  margin: 0;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--rule-2);
+}
+.panel-body { padding: 16px; }
+
+/* ---- 3. CONTROLS -------------------------------------------------------- */
+
+.control { margin-bottom: 20px; }
+.control:last-child { margin-bottom: 0; }
+.control > label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin-bottom: 6px;
+}
+.control .hint { font-size: 11.5px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+
+input[type="date"], select, input[type="number"] {
+  width: 100%;
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--ink);
+  background: var(--raised);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+}
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+button {
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 9px 14px;
+  border-radius: 3px;
+  border: 1px solid var(--rule);
+  background: var(--raised);
+  color: var(--ink);
+  cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--card);
+  width: 100%;
+}
+button.primary:disabled { opacity: .55; cursor: default; }
+button.tiny { padding: 3px 8px; font-size: 11.5px; font-weight: 500; }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  padding: 3px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--rule);
+  background: var(--raised);
+  color: var(--ink-2);
+  cursor: pointer;
+  user-select: none;
+}
+.chip[aria-pressed="true"] {
+  background: var(--delayed);
+  border-color: var(--delayed);
+  color: #fff;
+}
+
+.delay-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--rule-2);
+}
+.delay-row:last-child { border-bottom: none; }
+.delay-row .tail { font-weight: 600; }
+.delay-row .mins { color: var(--delayed); }
+.delay-row button { margin-left: auto; }
+
+/* ---- 4. RESULTS --------------------------------------------------------- */
+
+.figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: var(--gap);
+}
+.figure { background: var(--card); padding: 16px 18px; }
+.figure .value {
+  font-family: "IBM Plex Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  line-height: 1.1;
+}
+.figure .value.recovered { color: var(--good); }
+.figure .value.damage    { color: var(--delayed); }
+.figure .label { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.35; }
+
+/* Any wide block scrolls inside its own container, so the page body never
+   scrolls sideways on a phone. */
+.tbl-scroll { overflow-x: auto; }
+.breakdown { width: 100%; min-width: 480px; border-collapse: collapse; font-size: 13.5px; }
+.breakdown th, .breakdown td {
+  text-align: right; padding: 7px 0 7px 14px;
+  border-bottom: 1px solid var(--rule-2);
+}
+.breakdown th:first-child, .breakdown td:first-child { text-align: left; padding-left: 0; }
+.breakdown th {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); font-weight: 500;
+}
+.breakdown td { font-variant-numeric: tabular-nums; font-family: "IBM Plex Mono", monospace; font-size: 12.5px; }
+.breakdown td:first-child { font-family: inherit; font-size: 13.5px; }
+.breakdown tr:last-child td { border-bottom: none; }
+
+/* ---- 5. CHART ----------------------------------------------------------- */
+
+.chart-wrap { overflow-x: auto; padding: 4px 16px 16px; }
+svg.gantt { display: block; }
+svg.gantt .grid-line { stroke: var(--rule-2); stroke-width: 1; }
+/* Midnight. Marked because a day's chart routinely runs into the next one. */
+svg.gantt .grid-line.day-break { stroke: var(--rule); stroke-width: 1.5; stroke-dasharray: 3 3; }
+svg.gantt .day-break-label { fill: var(--muted); font-size: 9.5px; }
+svg.gantt .axis-text {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  fill: var(--muted);
+}
+svg.gantt .gate-label {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  fill: var(--ink-2);
+}
+svg.gantt .bar { fill: var(--block); rx: 2; }
+svg.gantt .bar.tow { fill: var(--block-tow); }
+svg.gantt .bar.moved { fill: var(--moved); }
+svg.gantt .bar.delayed { fill: var(--delayed); }
+/* A 2px ring in the surface colour so touching bars never visually merge. */
+svg.gantt .bar { stroke: var(--card); stroke-width: 2; paint-order: stroke; }
+svg.gantt .bar:hover { stroke: var(--ink); stroke-width: 1.5; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 16px; padding: 0 16px 14px; font-size: 12px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+
+.tooltip {
+  position: fixed;
+  pointer-events: none;
+  z-index: 20;
+  background: var(--raised);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  box-shadow: var(--shadow);
+  padding: 9px 11px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--ink);
+  max-width: 260px;
+}
+.tooltip.hidden { display: none; }
+.tooltip b { color: var(--accent); }
+
+/* the year strip */
+.year { padding: 12px 16px 16px; }
+svg.year-strip { display: block; width: 100%; height: 62px; }
+svg.year-strip rect.day { cursor: pointer; }
+svg.year-strip rect.day:hover { stroke: var(--ink); stroke-width: 1; }
+svg.year-strip rect.day.selected { stroke: var(--accent); stroke-width: 2; }
+svg.year-strip text { font-family: "IBM Plex Mono", monospace; font-size: 9.5px; fill: var(--muted); }
+
+.status {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11.5px;
+  color: var(--muted);
+  padding: 0 16px 14px;
+}
+.status.error { color: var(--delayed); }
+
+/* Anything that exists only for screen readers. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* ---- 6. RESPONSIVE ------------------------------------------------------ */
+
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; padding: var(--gap) 16px 60px; }
+  .masthead { padding: 18px 16px 14px; }
+  .figures { grid-template-columns: repeat(2, 1fr); }
+  .figure .value { font-size: 21px; }
+  .masthead nav { margin-left: 0; width: 100%; }
+}
+
+/* Nothing anywhere is allowed to widen the page itself. */
+html, body { max-width: 100%; overflow-x: hidden; }
