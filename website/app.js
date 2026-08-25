@@ -314,6 +314,17 @@ function hideTooltip() {
   document.getElementById("tooltip").classList.add("hidden");
 }
 
+function scrollHint() {
+  // A whole day at SEA is wider than any screen, so the chart scrolls inside
+  // its own panel. A sideways scrollbar buried in a box is easy to miss, so
+  // say it in words - but only when there is actually more to see.
+  const wrap = document.querySelector(".chart-wrap");
+  if (!wrap) return "";
+  return wrap.scrollWidth > wrap.clientWidth + 4
+    ? " · scroll the chart sideways to see the rest of the day"
+    : "";
+}
+
 /* ---- 5. THE FIGURES AND THE BREAKDOWN ----------------------------------- */
 
 function showFigures(result) {
@@ -392,7 +403,7 @@ async function loadDay() {
     setStatus("chart-status",
       day.blocks.length + " gate blocks · " + day.gates_used + " gates used of "
       + day.gates_available + " available · the theoretical minimum for this day is "
-      + day.minimum_possible_gates);
+      + day.minimum_possible_gates + scrollHint());
     document.getElementById("chart-title").textContent = "Gate occupancy · " + state.date;
     drawYearStrip(state.yearDays);
     announce("Loaded " + state.date + ", " + day.gates_used + " gates used.");
@@ -422,7 +433,8 @@ async function runScenario() {
     setStatus("chart-status",
       "Solved with the " + result.solver + " in " + result.seconds + "s · "
       + result.aircraft_moved_count + " aircraft moved · "
-      + assignment.gates_used + " gates used of " + assignment.gates_available + " available");
+      + assignment.gates_used + " gates used of " + assignment.gates_available
+      + " available" + scrollHint());
     announce("Scenario solved. " + result.recovered_percent + " percent of the disruption recovered.");
   } catch (error) {
     setStatus("chart-status", "That scenario could not be solved: " + error.message, true);

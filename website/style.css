@@ -115,11 +115,24 @@ body {
 
 .shell {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 300px minmax(0, 1fr);
   gap: var(--gap);
   padding: var(--gap) 28px 60px;
   align-items: start;
 }
+
+/* The gate chart is far wider than the screen, on purpose - a day at SEA does
+   not fit in 1400px and squashing it would make it unreadable.
+   
+   By default a grid or flex item refuses to shrink below its content's width,
+   so the chart would stretch its whole column, push the page wider than the
+   window, and take every panel with it. `minmax(0, 1fr)` above and these
+   `min-width: 0` rules tell those boxes they ARE allowed to be narrower than
+   what is inside them - which is what lets the chart scroll inside its own
+   container instead of dragging the page sideways. */
+.shell > aside,
+.shell > main { min-width: 0; }
+.panel { min-width: 0; }
 
 .panel {
   background: var(--card);
@@ -265,7 +278,8 @@ button.tiny { padding: 3px 8px; font-size: 11.5px; font-weight: 500; }
 
 /* ---- 5. CHART ----------------------------------------------------------- */
 
-.chart-wrap { overflow-x: auto; padding: 4px 16px 16px; }
+/* The chart scrolls here, inside its own panel, and nowhere else. */
+.chart-wrap { overflow-x: auto; overscroll-behavior-x: contain; padding: 4px 16px 16px; }
 svg.gantt { display: block; }
 svg.gantt .grid-line { stroke: var(--rule-2); stroke-width: 1; }
 /* Midnight. Marked because a day's chart routinely runs into the next one. */
@@ -344,5 +358,3 @@ svg.year-strip text { font-family: "IBM Plex Mono", monospace; font-size: 9.5px;
   .masthead nav { margin-left: 0; width: 100%; }
 }
 
-/* Nothing anywhere is allowed to widen the page itself. */
-html, body { max-width: 100%; overflow-x: hidden; }
