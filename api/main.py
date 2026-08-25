@@ -44,6 +44,13 @@ app = FastAPI(
     title="ALTO",
     description="Gate scheduling and disruption cost analysis for Alaska Airlines at SEA",
     version="1.0",
+    # FastAPI builds a browsable page of every endpoint, with a button to run
+    # each one. By default it lives at /docs - but the web server in front only
+    # forwards paths beginning with /api/, so the default is unreachable from
+    # outside. Moving these three under /api/ puts them back in reach.
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
 )
 
 # The website is served from the same host, but allowing any origin means the
