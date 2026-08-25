@@ -1,0 +1,26 @@
+# Raw BTS downloads are ~3 GB and reproducible with scripts/data_prep/00_download_bts_data.py
+data/raw/
+
+# Intermediate data. The big CSVs are reproducible from the raw downloads.
+data/processed/*.csv
+
+# alto.db is NOT ignored. It is 14 MB, and it is the only thing the server
+# needs to run - shipping it means deployment does not require the 3 GB of
+# raw BTS files. Rebuild it any time with: python -m alto.build_db
+
+# Jupyter
+.ipynb_checkpoints/
+.virtual_documents/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# The cleanup folder from the reorganization. About 400 MB of Jupyter
+# checkpoint duplicates. Ignored so it can never be committed by accident -
+# but it is safe to delete outright and should be.
+_to_delete/
+
+# macOS
+.DS_Store

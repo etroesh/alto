@@ -1,0 +1,10 @@
+# Data handling
+pandas>=2.0
+
+# Optimization
+pulp>=2.7          # ILP reference model, solved with the bundled CBC solver
+networkx>=3.0      # min-cost network flow, the production solver
+
+# Web service
+fastapi>=0.110
+uvicorn>=0.27
