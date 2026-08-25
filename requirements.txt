@@ -1,9 +1,14 @@
+# Python 3.9 or newer. The server this runs on has 3.9, so version ranges below
+# are chosen to resolve there - do not bump them without testing on the server.
+
 # Data handling
-pandas>=2.0
+pandas>=2.0,<3.0
 
 # Optimization
-pulp>=2.7          # ILP reference model, solved with the bundled CBC solver
-networkx>=3.0      # min-cost network flow, the production solver
+pulp>=2.7             # ILP reference model, solved with the bundled CBC solver
+networkx>=3.0,<3.3    # min-cost network flow, the production solver
+scipy>=1.10           # the Hungarian algorithm, for pairing chains to gates
+numpy>=1.24           # comes with pandas and scipy, named here because we import it directly
 
 # Web service
 fastapi>=0.110
