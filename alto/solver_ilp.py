@@ -43,6 +43,21 @@ import pulp
 
 from alto import config, schedule
 
+# A NOTE ON SOMETHING THAT DID NOT WORK
+# -------------------------------------
+# It seemed obvious that handing the solver a shortlist of gates - the lower
+# bound plus a little slack, instead of all 57 - would be faster. We know from
+# the sweep line how many gates a day needs, and 57 interchangeable gates is a
+# lot of symmetry to work through.
+#
+# It was measured and it was WORSE: 30.8 seconds against 21.7 for the full
+# roster on 15 July, for an identical answer. Fewer variables, but a tighter
+# problem is harder to prove optimal - the solver loses the slack that let it
+# find and confirm a good incumbent quickly.
+#
+# The idea is left written down rather than silently dropped, because it is the
+# kind of thing that looks obviously right and is worth not trying twice.
+
 
 # ===========================================================================
 # BLOCK 1 - Building the model

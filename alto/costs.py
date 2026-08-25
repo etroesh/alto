@@ -346,8 +346,14 @@ def first_fit_for_displaced(blocks, kept_assignment, open_gates):
 # The gap between damage and recovery is the value of the optimizer, stated
 # in dollars. That single number is the product.
 
-def damage_and_recovery(blocks, gates, scenario, solver):
-    """Price doing nothing against re-optimizing. Returns all three runs."""
+def damage_and_recovery(blocks, gates, scenario, solver, baseline_solution=None):
+    """Price doing nothing against re-optimizing. Returns all three runs.
+
+    baseline_solution lets the caller hand in an already-solved normal day.
+    The baseline never changes for a given date and solver, so re-solving it on
+    every scenario is pure waste - and with the integer program that waste was
+    over twenty seconds per request.
+    """
     from alto import scenarios
 
     costs = scenarios.resolve_costs(scenario.get("cost_overrides"))
@@ -367,7 +373,8 @@ def damage_and_recovery(blocks, gates, scenario, solver):
         }
 
     # --- baseline: the day as it was meant to run -------------------------
-    baseline_solution = solver.solve(blocks, gates)
+    if baseline_solution is None:
+        baseline_solution = solver.solve(blocks, gates)
     if not baseline_solution["feasible"]:
         return {"feasible": False, "stage": "baseline",
                 "reason": baseline_solution.get("reason")}
@@ -460,6 +467,14 @@ def damage_and_recovery(blocks, gates, scenario, solver):
         "baseline": baseline_price,
         "damage": damage_price,
         "recovery": recovery_price,
+        # The recovered plan itself, and the schedule it applies to. The web
+        # layer needs these to redraw the chart. Returning them here means the
+        # caller never has to solve the same day a second time just to find out
+        # where the aircraft ended up - which, with the exact solver, was
+        # doubling a twenty-second wait.
+        "recovery_assignment": recovery_solution["assignment"],
+        "disrupted_blocks": disrupted_blocks,
+        "gate_before_by_block_id": gate_by_block_id,
         "gates_used_baseline": baseline_solution["gates_used"],
         "gates_used_recovery": recovery_solution["gates_used"],
         "blocks_displaced_by_closure": displaced_count,

@@ -29,7 +29,8 @@
 const state = {
   date: "2023-07-15",
   delays: {},            // tail number -> minutes late
-  closedConcourses: [],
+  closedGates: [],       // individual gate ids that are shut
+  gates: [],             // the roster, loaded once from the API
   costOverrides: {},
   useExactSolver: false,
   blocks: [],            // what the chart is drawing right now
@@ -99,8 +100,8 @@ function currentScenario() {
   return {
     date: state.date,
     delays: state.delays,
-    closed_gates: [],
-    closed_concourses: state.closedConcourses,
+    closed_gates: state.closedGates,
+    closed_concourses: [],
     cost_overrides: state.costOverrides,
     use_exact_solver: state.useExactSolver,
   };
@@ -364,7 +365,133 @@ function clearFigures() {
     '<tr><td colspan="6" style="color:var(--muted);text-align:left">Run a scenario to fill this in.</td></tr>';
 }
 
-/* ---- 6. LOADING AND WIRING ---------------------------------------------- */
+/* ---- 6. THE GATE GRID --------------------------------------------------- */
+/* Every gate is its own button. Whole concourses were the first version and
+   they were too blunt - real closures are a stand or two for maintenance far
+   more often than an entire concourse. The per-concourse "close all" link is
+   kept as a shortcut for the dramatic case. */
+
+const CONCOURSE_NAMES = {
+  C: "Concourse C",
+  N: "North Satellite",
+  D: "Concourse D",
+};
+
+async function loadGates() {
+  const payload = await getJson("/api/gates");
+  state.gates = payload.gates;
+  drawGateGrid();
+}
+
+function drawGateGrid() {
+  const container = document.getElementById("gate-groups");
+  const closed = new Set(state.closedGates);
+
+  let markup = "";
+  ["C", "N", "D"].forEach(function (concourse) {
+    const inConcourse = state.gates.filter(function (g) { return g.concourse === concourse; });
+    if (inConcourse.length === 0) return;
+
+    const allClosed = inConcourse.every(function (g) { return closed.has(g.gate_id); });
+
+    markup += '<div class="gate-group">'
+      + '<div class="gate-group-head">'
+      + '<span class="name">' + CONCOURSE_NAMES[concourse] + "</span>"
+      + '<button class="close-all" data-concourse="' + concourse + '">'
+      + (allClosed ? "reopen all" : "close all " + inConcourse.length)
+      + "</button></div><div class=\"chips\">";
+
+    inConcourse.forEach(function (gate) {
+      const isClosed = closed.has(gate.gate_id);
+      markup += '<button class="chip gate" data-gate="' + gate.gate_id + '"'
+        + ' aria-pressed="' + isClosed + '"'
+        + ' title="' + gate.gate_id + (isClosed ? " — closed" : " — open") + '">'
+        + gate.gate_id + "</button>";
+    });
+
+    markup += "</div></div>";
+  });
+
+  container.innerHTML = markup;
+
+  container.querySelectorAll(".chip.gate").forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      const gateId = chip.dataset.gate;
+      state.closedGates = state.closedGates.indexOf(gateId) === -1
+        ? state.closedGates.concat([gateId])
+        : state.closedGates.filter(function (g) { return g !== gateId; });
+      drawGateGrid();
+    });
+  });
+
+  container.querySelectorAll(".close-all").forEach(function (link) {
+    link.addEventListener("click", function () {
+      const concourse = link.dataset.concourse;
+      const ids = state.gates
+        .filter(function (g) { return g.concourse === concourse; })
+        .map(function (g) { return g.gate_id; });
+      const allClosed = ids.every(function (id) { return state.closedGates.indexOf(id) !== -1; });
+
+      state.closedGates = allClosed
+        ? state.closedGates.filter(function (id) { return ids.indexOf(id) === -1; })
+        : state.closedGates.concat(ids.filter(function (id) { return state.closedGates.indexOf(id) === -1; }));
+      drawGateGrid();
+    });
+  });
+
+  const count = state.closedGates.length;
+  document.getElementById("closed-count").textContent =
+    count === 0 ? "" : "· " + count + " closed of " + state.gates.length;
+}
+
+/* ---- 7. THE SOLVING CLOCK ----------------------------------------------- */
+/* The exact solver can take fifteen seconds or more. Without a visible clock
+   that reads as a frozen page, and people start clicking things. So: count up
+   in real time, say plainly not to touch anything, and leave the final time on
+   screen afterwards - it is a genuinely interesting number. */
+
+let clockTimer = null;
+
+function startClock(isExactSolver) {
+  const panel = document.getElementById("solving");
+  const clock = document.getElementById("solving-clock");
+  const note = document.getElementById("solving-note");
+  const startedAt = Date.now();
+
+  panel.classList.remove("hidden", "done");
+  // Honest numbers, measured on the server: the network flow answers in about
+  // a second. The integer program takes roughly 20 seconds, or up to 50 the
+  // first time you use it on a new day, because the undisrupted day has to be
+  // solved exactly too before there is anything to compare against.
+  note.textContent = isExactSolver
+    ? "Running the integer program. Around 20 seconds — up to 50 the first time on a new day. Leave the controls alone until it finishes."
+    : "Working — this takes about a second. Leave the controls alone.";
+
+  clock.textContent = "0.0s";
+  clearInterval(clockTimer);
+  clockTimer = setInterval(function () {
+    clock.textContent = ((Date.now() - startedAt) / 1000).toFixed(1) + "s";
+  }, 100);
+}
+
+function stopClock(serverSeconds, solverName) {
+  clearInterval(clockTimer);
+  const panel = document.getElementById("solving");
+  panel.classList.add("done");
+  document.getElementById("solving-clock").textContent = serverSeconds + "s";
+  document.getElementById("solving-note").textContent =
+    "Solved by the " + solverName + ". Safe to change things again.";
+}
+
+function failClock(message) {
+  clearInterval(clockTimer);
+  const panel = document.getElementById("solving");
+  panel.classList.add("done");
+  document.getElementById("solving-clock").textContent = "—";
+  document.getElementById("solving-note").textContent = message;
+}
+
+/* ---- 8. LOADING AND WIRING ---------------------------------------------- */
 
 async function loadYear() {
   try {
@@ -415,29 +542,31 @@ async function loadDay() {
 async function runScenario() {
   const button = document.getElementById("run");
   button.disabled = true;
-  button.textContent = state.useExactSolver ? "Solving exactly, this takes a moment…" : "Solving…";
+  button.textContent = "Solving…";
+  startClock(state.useExactSolver);
   setStatus("chart-status", "Running the scenario…");
 
   try {
-    // The costs and the picture are two separate questions, so ask both at
-    // once rather than waiting for one before starting the other.
-    const [result, assignment] = await Promise.all([
-      postJson("/api/optimize", currentScenario()),
-      postJson("/api/assignment", currentScenario()),
-    ]);
+    // One request returns both the money and the picture. It used to be two,
+    // which meant the server solved the same day twice - barely noticeable with
+    // the network flow, and twenty wasted seconds with the exact solver.
+    const result = await postJson("/api/optimize", currentScenario());
 
     showFigures(result);
-    state.blocks = assignment.blocks;
-    drawGantt(assignment.blocks);
+    state.blocks = result.blocks;
+    drawGantt(result.blocks);
 
     setStatus("chart-status",
       "Solved with the " + result.solver + " in " + result.seconds + "s · "
       + result.aircraft_moved_count + " aircraft moved · "
-      + assignment.gates_used + " gates used of " + assignment.gates_available
+      + result.gates_used_recovery + " gates used of " + result.gates_available
       + " available" + scrollHint());
-    announce("Scenario solved. " + result.recovered_percent + " percent of the disruption recovered.");
+    stopClock(result.seconds, result.solver);
+    announce("Scenario solved in " + result.seconds + " seconds. "
+      + result.recovered_percent + " percent of the disruption recovered.");
   } catch (error) {
     setStatus("chart-status", "That scenario could not be solved: " + error.message, true);
+    failClock("Could not solve that scenario. See the message under the chart.");
   } finally {
     button.disabled = false;
     button.textContent = "Run scenario";
@@ -477,17 +606,6 @@ function wireControls() {
     renderDelayList();
   });
 
-  document.querySelectorAll("#concourse-chips .chip").forEach(function (chip) {
-    chip.addEventListener("click", function () {
-      const concourse = chip.dataset.concourse;
-      const isClosed = chip.getAttribute("aria-pressed") === "true";
-      chip.setAttribute("aria-pressed", String(!isClosed));
-      state.closedConcourses = isClosed
-        ? state.closedConcourses.filter(function (c) { return c !== concourse; })
-        : state.closedConcourses.concat([concourse]);
-    });
-  });
-
   const delayCost = document.getElementById("delay-cost");
   delayCost.addEventListener("input", function () {
     const value = Number(delayCost.value);
@@ -521,5 +639,6 @@ function wireControls() {
 /* ---- go ------------------------------------------------------------------ */
 
 wireControls();
+loadGates();
 loadYear();
 loadDay();

@@ -201,7 +201,58 @@ button.tiny { padding: 3px 8px; font-size: 11.5px; font-weight: 500; }
 
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.count {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px; font-weight: 500; color: var(--delayed);
+}
+
+/* ---- the gate grid ---- */
+.gate-group { margin-bottom: 12px; }
+.gate-group:last-child { margin-bottom: 0; }
+.gate-group-head {
+  display: flex; align-items: baseline; gap: 8px;
+  margin-bottom: 5px;
+}
+.gate-group-head .name {
+  font-size: 11.5px; font-weight: 600; color: var(--ink-2);
+}
+.gate-group-head .close-all {
+  margin-left: auto;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px; font-weight: 500;
+  background: none; border: none; padding: 0;
+  color: var(--accent); cursor: pointer; text-decoration: underline;
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip.gate {
+  font-size: 10.5px;
+  padding: 2px 5px;
+  min-width: 30px;
+  text-align: center;
+}
+
+/* ---- the solving clock ---- */
+.solving {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  text-align: center;
+}
+.solving.hidden { display: none; }
+.solving-clock {
+  font-family: "IBM Plex Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 26px; font-weight: 600;
+  color: var(--accent); line-height: 1.1;
+}
+.solving-note {
+  font-size: 11.5px; color: var(--ink-2); margin-top: 6px; line-height: 1.4;
+}
+.solving.done { border-color: var(--rule); background: var(--card); }
+.solving.done .solving-clock { color: var(--good); font-size: 20px; }
 .chip {
   font-family: "IBM Plex Mono", monospace;
   font-size: 11px;

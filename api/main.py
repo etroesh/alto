@@ -158,15 +158,22 @@ def get_day(date_string):
     return _remember(_day_cache, date_string, blocks)
 
 
-def get_baseline(date_string):
-    """The optimal plan for an undisrupted day."""
-    if date_string in _baseline_cache:
-        _baseline_cache.move_to_end(date_string)
-        return _baseline_cache[date_string]
+def get_baseline(date_string, exact=False):
+    """The optimal plan for an undisrupted day.
+
+    Cached per solver, not just per date. The two solvers agree on the number
+    of gates but not on the exact arrangement, so a baseline solved one way is
+    not a valid comparison for a recovery solved the other way.
+    """
+    key = date_string + ("|exact" if exact else "|flow")
+    if key in _baseline_cache:
+        _baseline_cache.move_to_end(key)
+        return _baseline_cache[key]
 
     blocks = get_day(date_string)
-    solved = solver_mcnf.solve(blocks, get_gates())
-    return _remember(_baseline_cache, date_string, solved)
+    solver = solver_ilp if exact else solver_mcnf
+    solved = solver.solve(blocks, get_gates())
+    return _remember(_baseline_cache, key, solved)
 
 
 # ===========================================================================
@@ -344,7 +351,12 @@ def optimize(request: ScenarioRequest):
     # trade-off visible instead of hiding it.
     solver = solver_ilp if request.use_exact_solver else solver_mcnf
 
-    result = costs.damage_and_recovery(blocks, get_gates(), scenario, solver)
+    # Hand in the cached baseline so only the recovery has to be solved.
+    baseline = get_baseline(request.date, request.use_exact_solver)
+
+    result = costs.damage_and_recovery(
+        blocks, get_gates(), scenario, solver, baseline_solution=baseline
+    )
 
     if not result["feasible"]:
         raise HTTPException(
@@ -358,6 +370,31 @@ def optimize(request: ScenarioRequest):
     # Solving builds and discards a large network. Give the memory back before
     # answering, so a burst of requests cannot ratchet this process upward.
     _release_memory_to_os()
+
+    # Shape the recovered plan for the chart, so the browser gets the money
+    # AND the picture from a single request. Two requests meant two solves,
+    # and with the exact solver that was twenty wasted seconds every time.
+    disrupted = result.pop("disrupted_blocks")
+    assignment = result.pop("recovery_assignment")
+    gate_before = result.pop("gate_before_by_block_id")
+
+    drawable = []
+    for position in range(len(disrupted)):
+        row = disrupted.iloc[position]
+        block_id = int(row["block_id"])
+        drawable.append({
+            "block_id": block_id,
+            "tail": row["tail_number"],
+            "start": int(row["start_minute"]),
+            "end": int(row["end_minute"]),
+            "type": row["block_type"],
+            "gate": assignment.get(position),
+            "was_at_gate": gate_before.get(block_id),
+            "injected_delay": int(row.get("injected_delay", 0)),
+        })
+    result["blocks"] = drawable
+    result["gates_available"] = len(scenarios.available_gates(
+        get_gates(), request.closed_gates, request.closed_concourses))
 
     result["solver"] = "integer program" if request.use_exact_solver else "network flow"
     result["seconds"] = round(time.time() - started, 3)

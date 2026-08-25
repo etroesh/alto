@@ -48,13 +48,11 @@
         </div>
 
         <div class="control">
-          <label>Close gates</label>
-          <div class="chips" id="concourse-chips">
-            <button class="chip" data-concourse="C" aria-pressed="false">Concourse C · 27</button>
-            <button class="chip" data-concourse="N" aria-pressed="false">North Satellite · 20</button>
-            <button class="chip" data-concourse="D" aria-pressed="false">Concourse D · 10</button>
-          </div>
-          <p class="hint">The North Satellite has closed for construction in real life.</p>
+          <label>Close gates <span id="closed-count" class="count"></span></label>
+          <!-- Filled in by app.js from the real gate roster, so this can never
+               drift out of step with what the model actually has. -->
+          <div id="gate-groups"></div>
+          <p class="hint">Click any gate to shut it, or close a whole concourse at once. Concourse D is shared with American, so the model treats it as overflow. The North Satellite really has closed for construction.</p>
         </div>
 
         <div class="control">
@@ -74,10 +72,14 @@
             <input type="checkbox" id="exact-solver" style="width:auto">
             Solve exactly
           </label>
-          <p class="hint">Runs the integer program instead of the network flow model. About 9% less passenger walking, roughly 40&times; slower. Gate count is optimal either way.</p>
+          <p class="hint">Runs the integer program instead of the network flow model. About 9% less passenger walking, but ~20 seconds instead of ~1. Gate count is optimal either way &mdash; that was proven on 16 days.</p>
         </div>
 
         <button class="primary" id="run">Run scenario</button>
+        <div class="solving hidden" id="solving" role="status" aria-live="polite">
+          <div class="solving-clock" id="solving-clock">0.0s</div>
+          <div class="solving-note" id="solving-note">Working — leave the controls alone until this finishes.</div>
+        </div>
       </div>
     </section>
   </aside>
