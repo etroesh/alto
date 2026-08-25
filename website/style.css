@@ -15,31 +15,37 @@
    this block contains a raw colour value. */
 
 :root {
-  --paper:      #F1F4F5;
-  --card:       #FBFCFC;
-  --raised:     #FFFFFF;
-  --ink:        #141A20;
-  --ink-2:      #3D4A55;
-  --muted:      #697A87;
-  --rule:       #D3DBDF;
-  --rule-2:     #E4EAEC;
+  /* Sky, cloud and desert. The subject is aviation, so the ground is cloud-
+     cream, the accent is sky, and the alert is the terracotta of a runway at
+     dusk. Started from a palette Evan chose; the two DATA colours below were
+     then stepped darker until they passed a colour-vision validator against
+     this exact background — the originals read as grey to a deuteranope and
+     failed contrast on cream. Same hues, usable weight. */
 
-  --accent:     #0F5A53;
-  --accent-soft:#DCEAE7;
+  --paper:      #E6E1D1;   /* cloud cream — the page ground */
+  --card:       #F4F1E8;   /* panels float lighter than the ground */
+  --raised:     #FBFAF6;   /* inputs and buttons, lighter still */
 
-  /* The two data colours. Both were checked with a colour-vision validator
-     against this exact background: they stay distinguishable for the common
-     forms of colour blindness, and each clears 3:1 contrast on the surface.
-     They are never the only signal - moved aircraft also get a border and a
-     legend entry. */
-  --moved:      #008C7E;   /* this aircraft changed gate */
-  --delayed:    #C25A0F;   /* this aircraft is running late */
+  --ink:        #22303A;   /* deep slate-blue, never pure black */
+  --ink-2:      #4A5C68;
+  --muted:      #7A8892;
+  --rule:       #CFC7B4;
+  --rule-2:     #DDD7C7;
 
-  --block:      #8FA3AF;   /* an ordinary, unchanged aircraft - deliberately recessive */
-  --block-tow:  #B9C6CE;   /* off-gate, towed to a hardstand */
+  --accent:     #0E7FA3;   /* sky */
+  --accent-soft:#D6E6EC;
 
-  --good:       #2E6B4F;
-  --shadow:     0 1px 2px rgba(20,26,32,.05), 0 8px 24px -16px rgba(20,26,32,.28);
+  /* THE TWO DATA COLOURS. Validated on this surface: lightness band, chroma
+     floor, colour-vision separation, and 3:1 contrast all pass. Neither is
+     ever the only signal — moved aircraft also carry a legend entry. */
+  --moved:      #0E7FA3;   /* this aircraft changed gate */
+  --delayed:    #AB4E33;   /* this aircraft is running late */
+
+  --block:      #93A3AD;   /* an ordinary, unchanged aircraft — recessive on purpose */
+  --block-tow:  #D5C2A3;   /* off-gate at a hardstand — sand, from the same palette */
+
+  --good:       #2F7358;
+  --shadow:     0 1px 2px rgba(34,48,58,.06), 0 8px 24px -16px rgba(34,48,58,.30);
 
   --radius:     4px;
   --gap:        16px;
@@ -47,36 +53,37 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper:      #0D1216;
-    --card:       #141B21;
-    --raised:     #1A232A;
-    --ink:        #E7EDF0;
-    --ink-2:      #B4C2CB;
-    --muted:      #7E909C;
-    --rule:       #26323A;
-    --rule-2:     #1D272E;
-    --accent:     #5BC4B4;
-    --accent-soft:#12332F;
-    /* Re-chosen for the dark surface and re-validated there, not lightened
-       versions of the light-mode pair. */
-    --moved:      #26A997;
-    --delayed:    #CE7433;
-    --block:      #55666F;
-    --block-tow:  #3A484F;
-    --good:       #6FC79A;
-    --shadow:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+    /* Night sky rather than an inverted cream. The data colours are stepped
+       independently for this surface and re-validated on it — a lightened
+       version of the light-mode pair fails the dark lightness band. */
+    --paper:      #131C24;
+    --card:       #1B2530;
+    --raised:     #22303A;
+    --ink:        #E8E3D6;   /* the cream returns as text */
+    --ink-2:      #B6BFC6;
+    --muted:      #7E8C96;
+    --rule:       #2E3C48;
+    --rule-2:     #222E38;
+    --accent:     #35A0C7;
+    --accent-soft:#14313E;
+    --moved:      #35A0C7;
+    --delayed:    #C4653F;
+    --block:      #52646F;
+    --block-tow:  #6E6249;
+    --good:       #5FAE86;
+    --shadow:     0 1px 2px rgba(0,0,0,.45), 0 8px 24px -16px rgba(0,0,0,.85);
   }
 }
 
 :root[data-theme="dark"] {
-  --paper:#0D1216; --card:#141B21; --raised:#1A232A;
-  --ink:#E7EDF0; --ink-2:#B4C2CB; --muted:#7E909C;
-  --rule:#26323A; --rule-2:#1D272E;
-  --accent:#5BC4B4; --accent-soft:#12332F;
-  --moved:#26A997; --delayed:#CE7433;
-  --block:#55666F; --block-tow:#3A484F;
-  --good:#6FC79A;
-  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  --paper:#131C24; --card:#1B2530; --raised:#22303A;
+  --ink:#E8E3D6; --ink-2:#B6BFC6; --muted:#7E8C96;
+  --rule:#2E3C48; --rule-2:#222E38;
+  --accent:#35A0C7; --accent-soft:#14313E;
+  --moved:#35A0C7; --delayed:#C4653F;
+  --block:#52646F; --block-tow:#6E6249;
+  --good:#5FAE86;
+  --shadow:0 1px 2px rgba(0,0,0,.45), 0 8px 24px -16px rgba(0,0,0,.85);
 }
 
 /* ---- 2. LAYOUT ---------------------------------------------------------- */
@@ -165,6 +172,35 @@ body {
   margin-bottom: 6px;
 }
 .control .hint { font-size: 11.5px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+.control .hint a { color: var(--accent); }
+
+/* ---- quick picks and day facts ---- */
+.quick-picks { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+.quick-picks button {
+  font-size: 11px; font-weight: 500;
+  padding: 3px 7px; border-radius: 3px;
+  border: 1px solid var(--rule); background: var(--raised); color: var(--ink-2);
+}
+.quick-picks button:hover { border-color: var(--accent); color: var(--accent); }
+
+.day-facts {
+  margin-top: 10px;
+  border-top: 1px solid var(--rule-2);
+  padding-top: 9px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.day-facts .headline { font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.day-facts .row { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); }
+.day-facts .row b {
+  font-family: "IBM Plex Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2); font-weight: 500;
+}
+.day-facts .tag-note {
+  margin-top: 6px; color: var(--accent);
+  font-size: 11.5px; line-height: 1.45;
+}
 
 input[type="date"], select, input[type="number"] {
   width: 100%;
@@ -378,8 +414,13 @@ svg.gantt .bar:hover { stroke: var(--ink); stroke-width: 1.5; }
 
 /* the year strip */
 .year { padding: 12px 16px 16px; }
-svg.year-strip { display: block; width: 100%; height: 62px; }
-svg.year-strip rect.day { cursor: pointer; }
+svg.year-strip { display: block; width: 100%; height: 96px; }
+svg.year-strip path.trend { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+/* The daily bars sit back so the seven-day average reads clearly on top of
+   them. They are context; the trend is the point. */
+svg.year-strip rect.day { cursor: pointer; fill: var(--block); opacity: .45; }
+svg.year-strip rect.day:hover { opacity: .9; }
+svg.year-strip rect.day.selected { opacity: 1; fill: var(--accent); }
 svg.year-strip rect.day:hover { stroke: var(--ink); stroke-width: 1; }
 svg.year-strip rect.day.selected { stroke: var(--accent); stroke-width: 2; }
 svg.year-strip text { font-family: "IBM Plex Mono", monospace; font-size: 9.5px; fill: var(--muted); }

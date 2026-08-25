@@ -33,7 +33,8 @@
         <div class="control">
           <label for="date-input">Day</label>
           <input type="date" id="date-input" value="2023-07-15" min="2023-01-01" max="2023-12-31">
-          <p class="hint">Any day of 2023. Alaska ran 132 to 256 aircraft turns a day at SEA.</p>
+          <div class="quick-picks" id="quick-picks"></div>
+          <div class="day-facts" id="day-facts"></div>
         </div>
 
         <div class="control">
@@ -52,19 +53,19 @@
           <!-- Filled in by app.js from the real gate roster, so this can never
                drift out of step with what the model actually has. -->
           <div id="gate-groups"></div>
-          <p class="hint">Click any gate to shut it, or close a whole concourse at once. Concourse D is shared with American, so the model treats it as overflow. The North Satellite really has closed for construction.</p>
+          <p class="hint">Concourse D is shared with American — the model treats it as overflow.</p>
         </div>
 
         <div class="control">
           <label for="delay-cost">Delay cost <span id="delay-cost-value">$98.41</span> / minute</label>
           <input type="range" id="delay-cost" min="40" max="200" step="1" value="98">
-          <p class="hint">Airlines for America put direct aircraft operating cost at $98.41 per block minute in 2025.</p>
+          <p class="hint">A4A, 2025: $98.41 default.</p>
         </div>
 
         <div class="control">
           <label for="propagation">Delay propagation <span id="propagation-value">0.75</span></label>
           <input type="range" id="propagation" min="0" max="1" step="0.05" value="0.75">
-          <p class="hint">How much of a delay carries into the aircraft's next flight once slack is used up. This one is an assumption, not a published figure.</p>
+          <p class="hint">How much lateness carries to the aircraft's next flight. An assumption, not a published figure.</p>
         </div>
 
         <div class="control">
@@ -72,7 +73,7 @@
             <input type="checkbox" id="exact-solver" style="width:auto">
             Solve exactly
           </label>
-          <p class="hint">Runs the integer program instead of the network flow model. About 9% less passenger walking, but ~20 seconds instead of ~1. Gate count is optimal either way &mdash; that was proven on 16 days.</p>
+          <p class="hint">Integer program instead of network flow. ~20s instead of ~1s, for 9% less walking. Same gate count &mdash; <a href="methods.html#validation">proven on 16 days</a>.</p>
         </div>
 
         <button class="primary" id="run">Run scenario</button>
@@ -88,7 +89,7 @@
   <main>
 
     <section class="panel" style="margin-bottom:16px">
-      <h2>2023 at a glance — gates needed each day</h2>
+      <h2>2023 · aircraft turns per day</h2>
       <div class="year">
         <svg class="year-strip" id="year-strip" role="img" aria-label="Gates required on each day of 2023"></svg>
       </div>

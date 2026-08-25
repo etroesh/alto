@@ -227,8 +227,12 @@ SINK → SOURCE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;the return pipe — its flow IS the
 <h2 id="limits">8 · What this cannot tell you</h2>
 
 <div class="callout">
-  <span class="tag">The big one</span>
-  <p><b>Regional flying is missing.</b> Horizon Air and SkyWest operate Embraer E175s in Alaska livery under carrier codes <code>QX</code> and <code>OO</code>. Those aircraft use Alaska's gates and are not in this dataset, which covers mainline <code>AS</code> only. Every utilization figure here is therefore a floor, not an estimate, and no claim about contractual gate-use compliance can be made until they are added.</p>
+  <span class="tag">The big one — and it cannot be fixed from this data</span>
+  <p>Horizon Air and SkyWest fly Embraer E175s in Alaska livery and use Alaska's gates. Neither can be included, for two different reasons.</p>
+  <p style="margin-top:10px"><b>Horizon Air does not file BTS On-Time Performance at all.</b> The 2023 files contain exactly fifteen carriers — 9E, AA, AS, B6, DL, F9, G4, HA, MQ, NK, OH, OO, UA, WN, YX. Horizon is not among them. Its aircraft are invisible in this dataset and nothing can recover them.</p>
+  <p style="margin-top:10px"><b>SkyWest is present but cannot be attributed.</b> 3,170 SkyWest flights touched SEA in January 2023, against Alaska mainline's 11,605 — but SkyWest flies for Alaska, Delta, United and American at once, and this table records only the operating carrier. Three attribution attempts failed: there is no marketing-carrier or codeshare field; flight-number blocks do not separate partners, since both the 3000- and 4000-series serve Pacific Northwest routes from SEA; and aircraft do not segregate either — <b>103 of the 104 SkyWest tails that touched SEA in January also touched another mainline's hub.</b></p>
+  <p style="margin-top:10px">Attributing them by route heuristic would produce a plausible-looking number with no defensible basis. <b>A stated gap beats an unsourced guess.</b></p>
+  <p style="margin-top:10px">So: every utilization figure here is a <b>floor for Alaska mainline</b>, not an estimate of the Alaska brand's total gate demand. Closing it properly means BTS's separate <em>Marketing Carrier</em> table, which carries both operating and marketing carrier — and even that would not include Horizon.</p>
 </div>
 
 <p><b>No public dataset contains gate assignments.</b> Not BTS, not anything. Which gate a flight actually used is unknowable from public data. ALTO produces an <em>optimal</em> assignment, not a reconstruction of the real one, and there is no ground truth to validate against. The solvers are validated against each other and against theory — which is what section 5 does — but not against reality.</p>

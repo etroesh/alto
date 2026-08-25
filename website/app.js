@@ -115,28 +115,48 @@ function currentScenario() {
 function drawYearStrip(days) {
   const svg = document.getElementById("year-strip");
   const width = svg.clientWidth || 900;
-  const height = 62;
+  const height = 96;
   const axisRoom = 14;
   const plotHeight = height - axisRoom;
 
-  const maxGates = Math.max.apply(null, days.map(function (d) { return d.gates_used || 0; }));
+  // Daily turns, not gates used. Gates only range 20 to 36, which flattens the
+  // year into a wall of near-identical bars. Turns run 132 to 256 and show the
+  // shape of the operation - a summer peak and a winter trough.
+  const values = days.map(function (d) { return d.turns; });
+  const highest = Math.max.apply(null, values);
   const barWidth = width / days.length;
 
   let markup = "";
 
   days.forEach(function (day, index) {
-    const barHeight = ((day.gates_used || 0) / maxGates) * plotHeight;
-    const x = index * barWidth;
-    const y = plotHeight - barHeight;
+    const barHeight = (day.turns / highest) * plotHeight;
     const isSelected = day.date === state.date;
     markup += '<rect class="day' + (isSelected ? " selected" : "") + '"'
-      + ' x="' + x.toFixed(2) + '" y="' + y.toFixed(2) + '"'
-      + ' width="' + Math.max(barWidth - 0.5, 0.5).toFixed(2) + '" height="' + barHeight.toFixed(2) + '"'
-      + ' fill="var(--accent)" data-date="' + day.date + '"'
-      + ' data-gates="' + day.gates_used + '" data-turns="' + day.turns + '"></rect>';
+      + ' x="' + (index * barWidth).toFixed(2) + '" y="' + (plotHeight - barHeight).toFixed(2) + '"'
+      + ' width="' + Math.max(barWidth - 0.4, 0.4).toFixed(2) + '" height="' + barHeight.toFixed(2) + '"'
+      + ' data-date="' + day.date + '" data-turns="' + day.turns
+      + '" data-gates="' + day.gates_used + '"></rect>';
   });
 
-  // A label every month, placed at that month's first day.
+  // A seven-day average drawn over the top. Daily traffic swings hard by day of
+  // week - Thursday runs 215 turns, Saturday 188 - and that weekly sawtooth
+  // hides the seasonal trend underneath it. Averaging over exactly one week
+  // cancels the day-of-week effect and leaves the season.
+  const WINDOW = 7;
+  let path = "";
+  for (let index = 0; index < days.length; index++) {
+    const from = Math.max(0, index - Math.floor(WINDOW / 2));
+    const to = Math.min(days.length, from + WINDOW);
+    let total = 0;
+    for (let k = from; k < to; k++) total += days[k].turns;
+    const average = total / (to - from);
+
+    const x = index * barWidth + barWidth / 2;
+    const y = plotHeight - (average / highest) * plotHeight;
+    path += (index === 0 ? "M" : "L") + x.toFixed(1) + " " + y.toFixed(1);
+  }
+  markup += '<path class="trend" d="' + path + '"></path>';
+
   const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   days.forEach(function (day, index) {
     if (day.date.slice(8) !== "01") return;
@@ -155,12 +175,92 @@ function drawYearStrip(days) {
       loadDay();
     });
     rect.addEventListener("mousemove", function (event) {
-      showTooltip(event,
-        "<b>" + rect.dataset.date + "</b><br>"
-        + rect.dataset.gates + " gates · " + rect.dataset.turns + " turns");
+      showTooltip(event, "<b>" + rect.dataset.date + "</b><br>"
+        + rect.dataset.turns + " turns · " + rect.dataset.gates + " gates");
     });
     rect.addEventListener("mouseleave", hideTooltip);
   });
+}
+
+/* ---- what makes a day worth looking at ---------------------------------- */
+/* A date picker with 365 equally plausible options gives a visitor nothing to
+   go on. These shortcuts and the facts panel answer "why this day?" before
+   they have to ask. */
+
+const HOLIDAYS = {
+  "2023-01-01": "New Year's Day",
+  "2023-05-29": "Memorial Day",
+  "2023-07-04": "Independence Day",
+  "2023-09-04": "Labor Day",
+  "2023-11-23": "Thanksgiving Day",
+  "2023-12-24": "Christmas Eve",
+  "2023-12-25": "Christmas Day",
+  "2023-12-31": "New Year's Eve",
+};
+
+function extremeDay(days, field, biggest) {
+  return days.reduce(function (best, day) {
+    if (!best) return day;
+    return (biggest ? day[field] > best[field] : day[field] < best[field]) ? day : best;
+  }, null);
+}
+
+function drawQuickPicks() {
+  const days = state.yearDays;
+  if (days.length === 0) return;
+
+  const picks = [
+    ["Busiest", extremeDay(days, "turns", true).date],
+    ["Quietest", extremeDay(days, "turns", false).date],
+    ["Most gates", extremeDay(days, "gates_used", true).date],
+    ["Costliest", extremeDay(days, "total_cost", true).date],
+  ];
+
+  document.getElementById("quick-picks").innerHTML = picks.map(function (pick) {
+    return '<button data-date="' + pick[1] + '">' + pick[0] + "</button>";
+  }).join("");
+
+  document.querySelectorAll("#quick-picks button").forEach(function (button) {
+    button.addEventListener("click", function () {
+      document.getElementById("date-input").value = button.dataset.date;
+      state.date = button.dataset.date;
+      loadDay();
+    });
+  });
+}
+
+function drawDayFacts() {
+  const panel = document.getElementById("day-facts");
+  const days = state.yearDays;
+  const day = days.filter(function (d) { return d.date === state.date; })[0];
+  if (!day) { panel.innerHTML = ""; return; }
+
+  // Rank is the fastest way to say whether a number is unusual.
+  const busierThan = days.filter(function (d) { return d.turns > day.turns; }).length;
+  const costlierThan = days.filter(function (d) { return d.total_cost > day.total_cost; }).length;
+  const medianTurns = days.map(function (d) { return d.turns; })
+    .sort(function (a, b) { return a - b; })[Math.floor(days.length / 2)];
+
+  const weekday = new Date(day.date + "T12:00:00")
+    .toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+
+  let note = "";
+  if (HOLIDAYS[day.date]) note = HOLIDAYS[day.date] + ".";
+  if (busierThan === 0) note = "The busiest day of 2023.";
+  if (busierThan === days.length - 1) note = (note ? note + " " : "") + "The quietest day of the year — Thanksgiving Day is famously dead in the air; it is the days on either side that are busy.";
+  if (costlierThan === 0) note = (note ? note + " " : "") + "The most expensive day to run.";
+
+  panel.innerHTML =
+    '<div class="headline">' + weekday + "</div>"
+    + '<div class="row"><span>Aircraft turns</span><b>' + day.turns
+      + " · #" + (busierThan + 1) + " of 365</b></div>"
+    + '<div class="row"><span>Gates needed</span><b>' + day.gates_used + " of 57</b></div>"
+    + '<div class="row"><span>Turns per gate</span><b>' + day.turns_per_gate + "</b></div>"
+    + '<div class="row"><span>Cost to run</span><b>' + shortMoney(day.total_cost)
+      + " · #" + (costlierThan + 1) + "</b></div>"
+    + '<div class="row"><span>vs median day</span><b>'
+      + (day.turns >= medianTurns ? "+" : "") + (day.turns - medianTurns) + " turns</b></div>"
+    + (note ? '<div class="tag-note">' + note + "</div>" : "");
 }
 
 /* ---- 4. THE GANTT CHART ------------------------------------------------- */
@@ -498,12 +598,13 @@ async function loadYear() {
     const payload = await getJson("data/baseline_index.json");
     state.yearDays = payload.days.filter(function (d) { return d.feasible; });
     drawYearStrip(state.yearDays);
-    const gatesUsed = state.yearDays.map(function (d) { return d.gates_used; });
-    const lowest = Math.min.apply(null, gatesUsed);
-    const highest = Math.max.apply(null, gatesUsed);
+    drawQuickPicks();
+    drawDayFacts();
+    const turns = state.yearDays.map(function (d) { return d.turns; });
     setStatus("year-status",
-      state.yearDays.length + " days · Alaska needed between " + lowest + " and " + highest
-      + " of its 57 gates · click any day to load it");
+      "Daily turns in grey, seven-day average in blue · "
+      + Math.min.apply(null, turns) + " to " + Math.max.apply(null, turns)
+      + " turns a day · click any day");
   } catch (error) {
     setStatus("year-status", "Could not load the year summary: " + error.message, true);
   }
@@ -533,6 +634,7 @@ async function loadDay() {
       + day.minimum_possible_gates + scrollHint());
     document.getElementById("chart-title").textContent = "Gate occupancy · " + state.date;
     drawYearStrip(state.yearDays);
+    drawDayFacts();
     announce("Loaded " + state.date + ", " + day.gates_used + " gates used.");
   } catch (error) {
     setStatus("chart-status", "Could not load that day: " + error.message, true);
