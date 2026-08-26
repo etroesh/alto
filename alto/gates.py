@@ -22,6 +22,8 @@ What we ASSUME:
 
 from dataclasses import dataclass
 
+from alto import config
+
 
 # Aircraft size classes. Alaska's SEA operation is almost entirely narrowbody:
 # Boeing 737 family flown by Alaska mainline, and Embraer E175 flown by
@@ -43,8 +45,8 @@ SIZE_FITS = {
 class Gate:
     """One physical gate.
 
-    gate_id     - short label, e.g. "C12" or "N4"
-    concourse   - "C", "N" (North Satellite), or "D"
+    gate_id     - short label, e.g. "C12", "N4" or "S3"
+    concourse   - "C", "N" (North Satellite), "D", or "S" (common use)
     size        - the largest aircraft class this gate can hold
     walk_cost   - relative penalty for putting a flight here, in "cost units".
                   Higher means further from the terminal center, which means
@@ -104,6 +106,17 @@ def build_gate_roster():
         walk_cost = SHARED_GATE_PENALTY + (number / 10.0)
         gates.append(Gate(gate_id, "D", SIZE_NARROWBODY, walk_cost))
 
+    # --- Common-use gates: the overflow, and they are not free.
+    # Alaska does not rent these. It pays the Port of Seattle a per-turn fee
+    # every time it uses one - $552.89 for a narrowbody under the 2025 tariff.
+    # The optimizer therefore reaches for them only when its own gates are
+    # full, which is exactly how a real airline treats them.
+    COMMON_USE_PENALTY = 6.0
+    for number in range(1, config.COMMON_USE_GATE_COUNT + 1):
+        gate_id = "S" + str(number)
+        walk_cost = COMMON_USE_PENALTY + (number / 10.0)
+        gates.append(Gate(gate_id, "S", SIZE_NARROWBODY, walk_cost))
+
     return gates
 
 
@@ -117,7 +130,7 @@ def gate_can_hold(gate, aircraft_size):
 if __name__ == "__main__":
     roster = build_gate_roster()
     print("Total gates:", len(roster))
-    for concourse in ["C", "N", "D"]:
+    for concourse in ["C", "N", "D", "S"]:
         in_concourse = [g for g in roster if g.concourse == concourse]
         regional = [g for g in in_concourse if g.size == SIZE_REGIONAL]
         print(

@@ -230,10 +230,22 @@ def price(blocks, assignment, simulation, costs=None):
     idle_cost = idle_minutes * costs["gate_idle_cost_per_minute"]
 
     # --- towing -----------------------------------------------------------
-    # One fee per tow. An "arrival" block means the turn was long enough that
-    # the aircraft went out to a hardstand, so each one is a tug movement.
+    # One fee per tug movement. An "arrival" block means the aircraft was moved
+    # off its gate partway through its stay, so each one is a tow.
     tows = sum(1 for t in block_types if t == "arrival")
     towing_cost = tows * costs["remote_hardstand_fee"]
+
+    # --- common-use gates -------------------------------------------------
+    # Alaska pays rent on its own gates, so one more turn on those costs
+    # nothing at the margin. A common-use gate is billed per turn instead -
+    # $552.89 for a narrowbody under the 2025 tariff. This is what makes
+    # overflow visible as money rather than as a footnote.
+    common_use_turns = 0
+    for position in positions:
+        gate = assignment.get(position)
+        if gate is not None and gate.startswith("S"):
+            common_use_turns = common_use_turns + 1
+    common_use_cost = common_use_turns * costs["common_gate_turn_fee"]
 
     return {
         "delay_minutes": round(delay_minutes, 1),
@@ -244,7 +256,9 @@ def price(blocks, assignment, simulation, costs=None):
         "idle_cost": round(idle_cost, 2),
         "tows": tows,
         "towing_cost": round(towing_cost, 2),
-        "total_cost": round(delay_cost + idle_cost + towing_cost, 2),
+        "common_use_turns": common_use_turns,
+        "common_use_cost": round(common_use_cost, 2),
+        "total_cost": round(delay_cost + idle_cost + towing_cost + common_use_cost, 2),
     }
 
 

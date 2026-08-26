@@ -198,6 +198,18 @@ const HOLIDAYS = {
   "2023-12-31": "New Year's Eve",
 };
 
+function ordinal(n) {
+  // "103rd busiest" reads; "#103 of 365" makes you work it out.
+  const lastTwo = n % 100;
+  if (lastTwo >= 11 && lastTwo <= 13) return n + "th";
+  const last = n % 10;
+  if (last === 1) return n + "st";
+  if (last === 2) return n + "nd";
+  if (last === 3) return n + "rd";
+  return n + "th";
+}
+
+
 function extremeDay(days, field, biggest) {
   return days.reduce(function (best, day) {
     if (!best) return day;
@@ -249,15 +261,22 @@ function drawDayFacts() {
   if (busierThan === 0) note = "The busiest day of 2023.";
   if (busierThan === days.length - 1) note = (note ? note + " " : "") + "The quietest day of the year — Thanksgiving Day is famously dead in the air; it is the days on either side that are busy.";
   if (costlierThan === 0) note = (note ? note + " " : "") + "The most expensive day to run.";
+  if (day.gates_used > 57) {
+    note = (note ? note + " " : "")
+      + "Needs more than Alaska's 57 preferential gates — the overflow is billed per turn as common-use.";
+  }
 
   panel.innerHTML =
     '<div class="headline">' + weekday + "</div>"
-    + '<div class="row"><span>Aircraft turns</span><b>' + day.turns
-      + " · #" + (busierThan + 1) + " of 365</b></div>"
-    + '<div class="row"><span>Gates needed</span><b>' + day.gates_used + " of 57</b></div>"
-    + '<div class="row"><span>Turns per gate</span><b>' + day.turns_per_gate + "</b></div>"
-    + '<div class="row"><span>Cost to run</span><b>' + shortMoney(day.total_cost)
-      + " · #" + (costlierThan + 1) + "</b></div>"
+    + '<div class="row"><span>Aircraft turns</span><b>' + day.turns + "</b></div>"
+    + '<div class="row"><span></span><b style="color:var(--muted);font-weight:400">'
+      + ordinal(busierThan + 1) + " busiest day of the year</b></div>"
+    + '<div class="row"><span>Stands needed</span><b>' + day.gates_used
+      + (day.gates_used > 57 ? " — over its 57" : " of 57") + "</b></div>"
+    + '<div class="row"><span>Turns per stand</span><b>' + day.turns_per_gate + "</b></div>"
+    + '<div class="row"><span>Cost to run</span><b>' + shortMoney(day.total_cost) + "</b></div>"
+    + '<div class="row"><span></span><b style="color:var(--muted);font-weight:400">'
+      + ordinal(costlierThan + 1) + " most expensive</b></div>"
     + '<div class="row"><span>vs median day</span><b>'
       + (day.turns >= medianTurns ? "+" : "") + (day.turns - medianTurns) + " turns</b></div>"
     + (note ? '<div class="tag-note">' + note + "</div>" : "");
@@ -281,10 +300,16 @@ function drawGantt(blocks) {
 
   // Which gates are in use, ordered the way the terminal is: C, then the
   // North Satellite, then D, and numerically within each.
+  // Gates in use, PLUS any the scenario has closed. A closed gate keeps its
+  // row so you can see it is out of service, rather than having to notice a
+  // line that is no longer there.
   const gateSet = {};
   blocks.forEach(function (block) { if (block.gate) gateSet[block.gate] = true; });
+  state.closedGates.forEach(function (gateId) { gateSet[gateId] = true; });
+
+  const closed = new Set(state.closedGates);
   const gates = Object.keys(gateSet).sort(function (a, b) {
-    const order = { C: 0, N: 1, D: 2 };
+    const order = { C: 0, N: 1, D: 2, S: 3 };
     if (order[a[0]] !== order[b[0]]) return order[a[0]] - order[b[0]];
     return parseInt(a.slice(1), 10) - parseInt(b.slice(1), 10);
   });
@@ -341,10 +366,21 @@ function drawGantt(blocks) {
     }
   }
 
-  // Gate names down the left.
+  // Gate names down the left, with a faint band on every other row so the eye
+  // can follow a line across a chart this wide without losing it.
   gates.forEach(function (gate, index) {
-    const y = TOP_MARGIN + index * ROW_HEIGHT + ROW_HEIGHT / 2 + 3;
-    markup += '<text class="gate-label" x="' + (LABEL_WIDTH - 8) + '" y="' + y
+    const rowTop = TOP_MARGIN + index * ROW_HEIGHT;
+
+    if (closed.has(gate)) {
+      markup += '<rect class="closed-row" x="' + LABEL_WIDTH + '" y="' + rowTop
+        + '" width="' + plotWidth + '" height="' + ROW_HEIGHT + '"></rect>';
+    } else if (index % 2 === 1) {
+      markup += '<rect class="band" x="' + LABEL_WIDTH + '" y="' + rowTop
+        + '" width="' + plotWidth + '" height="' + ROW_HEIGHT + '"></rect>';
+    }
+
+    markup += '<text class="gate-label' + (closed.has(gate) ? " closed" : "")
+      + '" x="' + (LABEL_WIDTH - 8) + '" y="' + (rowTop + ROW_HEIGHT / 2 + 3)
       + '" text-anchor="end">' + gate + "</text>";
   });
 
@@ -450,6 +486,7 @@ function showFigures(result) {
       + "<td>" + money(priced.delay_cost) + "</td>"
       + "<td>" + money(priced.idle_cost) + "</td>"
       + "<td>" + money(priced.towing_cost) + "</td>"
+      + "<td>" + money(priced.common_use_cost) + "</td>"
       + "<td><b>" + money(priced.total_cost) + "</b></td>"
       + "<td>" + gates + "</td>"
       + "</tr>";
@@ -462,7 +499,7 @@ function clearFigures() {
     document.getElementById(id).textContent = "—";
   });
   document.getElementById("breakdown-body").innerHTML =
-    '<tr><td colspan="6" style="color:var(--muted);text-align:left">Run a scenario to fill this in.</td></tr>';
+    '<tr><td colspan="7" style="color:var(--muted);text-align:left">Run a scenario to fill this in.</td></tr>';
 }
 
 /* ---- 6. THE GATE GRID --------------------------------------------------- */
@@ -475,6 +512,7 @@ const CONCOURSE_NAMES = {
   C: "Concourse C",
   N: "North Satellite",
   D: "Concourse D",
+  S: "Common-use (billed per turn)",
 };
 
 async function loadGates() {
@@ -488,7 +526,7 @@ function drawGateGrid() {
   const closed = new Set(state.closedGates);
 
   let markup = "";
-  ["C", "N", "D"].forEach(function (concourse) {
+  ["C", "N", "D", "S"].forEach(function (concourse) {
     const inConcourse = state.gates.filter(function (g) { return g.concourse === concourse; });
     if (inConcourse.length === 0) return;
 
@@ -694,6 +732,23 @@ function renderDelayList() {
   });
 }
 
+function wireInfoButtons() {
+  // Reuses the chart tooltip so there is one popover in the page, not two.
+  document.querySelectorAll("button.info").forEach(function (button) {
+    function show(event) { showTooltip(event, button.dataset.info); }
+    button.addEventListener("mouseenter", show);
+    button.addEventListener("mousemove", show);
+    button.addEventListener("focus", function () {
+      const box = button.getBoundingClientRect();
+      showTooltip({ clientX: box.left, clientY: box.bottom }, button.dataset.info);
+    });
+    button.addEventListener("mouseleave", hideTooltip);
+    button.addEventListener("blur", hideTooltip);
+    button.addEventListener("click", function (event) { show(event); });
+  });
+}
+
+
 function wireControls() {
   document.getElementById("date-input").addEventListener("change", function (event) {
     state.date = event.target.value;
@@ -741,6 +796,7 @@ function wireControls() {
 /* ---- go ------------------------------------------------------------------ */
 
 wireControls();
+wireInfoButtons();
 loadGates();
 loadYear();
 loadDay();

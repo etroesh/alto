@@ -14,7 +14,8 @@
 
 <header class="masthead">
   <h1>ALTO</h1>
-  <span class="tagline">Gate scheduling optimization · Alaska Airlines · Seattle&#8209;Tacoma</span>
+  <span class="expansion">Aviation Logistics &amp; Terminal Optimizer</span>
+  <span class="tagline">Gate scheduling · Alaska Airlines · Seattle&#8209;Tacoma</span>
   <nav>
     <a href="methods.html">Methods</a>
     <a href="https://github.com/etroesh/alto">Source</a>
@@ -53,7 +54,7 @@
           <!-- Filled in by app.js from the real gate roster, so this can never
                drift out of step with what the model actually has. -->
           <div id="gate-groups"></div>
-          <p class="hint">Concourse D is shared with American — the model treats it as overflow.</p>
+          <p class="hint">Alaska rents C, N and D. The S stands are common-use — billed $552.89 every turn they are used, so the optimizer only reaches for them when it must.</p>
         </div>
 
         <div class="control">
@@ -63,7 +64,10 @@
         </div>
 
         <div class="control">
-          <label for="propagation">Delay propagation <span id="propagation-value">0.75</span></label>
+          <label for="propagation">Delay propagation <span id="propagation-value">0.75</span>
+            <button class="info" type="button" aria-label="What is delay propagation?"
+              data-info="A share, not a count. If an aircraft lands 30 minutes late into a turn with 20 minutes of slack, 10 minutes are left over — and 0.75 of that, so 7.5 minutes, pushes into its next departure. Crews recover the rest on the ground. There is no published figure for this, which is why it is a slider.">?</button>
+          </label>
           <input type="range" id="propagation" min="0" max="1" step="0.05" value="0.75">
           <p class="hint">How much lateness carries to the aircraft's next flight. An assumption, not a published figure.</p>
         </div>
@@ -117,12 +121,13 @@
               <th>Delay</th>
               <th>Idle gates</th>
               <th>Towing</th>
+              <th>Common use</th>
               <th>Total</th>
               <th>Gates</th>
             </tr>
           </thead>
           <tbody id="breakdown-body">
-            <tr><td colspan="6" style="color:var(--muted);text-align:left">Run a scenario to fill this in.</td></tr>
+            <tr><td colspan="7" style="color:var(--muted);text-align:left">Run a scenario to fill this in.</td></tr>
           </tbody>
         </table>
         </div>
@@ -133,7 +138,10 @@
       <h2 id="chart-title">Gate occupancy</h2>
       <div class="legend">
         <span><i style="background:var(--block)"></i> at gate</span>
-        <span><i style="background:var(--block-tow)"></i> towed off-gate</span>
+        <span><i style="background:var(--block-tow)"></i> towed off-gate
+          <button class="info" type="button" aria-label="What does towed off-gate mean?"
+            data-info="When every stand is full, the aircraft with the longest wait ahead of it is moved to a remote hardstand by tug, and brought back an hour before departure to board. You see two bars for it: one on arrival, one for boarding. It happens to about 1 turn in 1,000.">?</button>
+        </span>
         <span><i style="background:var(--moved)"></i> moved to a different gate</span>
         <span><i style="background:var(--delayed)"></i> running late</span>
       </div>

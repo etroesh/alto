@@ -135,6 +135,7 @@ def resolve_costs(cost_overrides=None):
         "delay_cost_per_minute": config.DELAY_COST_PER_MINUTE,
         "gate_idle_cost_per_minute": config.GATE_IDLE_COST_PER_MINUTE,
         "remote_hardstand_fee": config.REMOTE_HARDSTAND_FEE,
+        "common_gate_turn_fee": config.COMMON_GATE_TURN_FEE_NARROWBODY,
         "delay_propagation_factor": config.DELAY_PROPAGATION_FACTOR,
     }
     costs.update(cost_overrides)

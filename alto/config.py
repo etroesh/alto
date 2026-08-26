@@ -52,13 +52,33 @@ MIN_TURN_MINUTES = 20
 # across that gap would invent a turn that never happened.
 MAX_TURN_MINUTES = 36 * 60
 
-# TOW_THRESHOLD_MINUTES: real airlines do not leave an aircraft parked at a
-# passenger gate for eight hours. Past roughly three hours of ground time the
-# aircraft is towed to a remote hardstand and brought back for boarding.
-# Turns longer than this get split into two shorter gate occupancies (see
-# occupancy_intervals in build_turns.py) instead of blocking a gate all day.
-# Set to None to disable towing and let every turn hold its gate end to end.
-TOW_THRESHOLD_MINUTES = 180
+# Aircraft get towed to a remote hardstand when a gate is NEEDED, not on a
+# timer. See occupancy_intervals() in build_turns.py for why the timer version
+# was wrong. These are the parameters that rule uses.
+
+# Alaska holds 57 PREFERENTIAL-USE gates at SEA: Concourse C, the North
+# Satellite, and a share of Concourse D. Preferential means Alaska has priority
+# on them and already pays rent, so using one more costs nothing at the margin.
+PREFERENTIAL_GATE_COUNT = 57
+
+# It also has access to COMMON-USE gates when its own are full, billed per turn
+# rather than rented. This is not a convenience added to make the model fit -
+# measuring forced it. With 57 gates and nothing else, Alaska's own schedule is
+# over capacity at the evening bank on 39 days of 2023, and by then every
+# aircraft on a gate is either still deplaning or already boarding: there is
+# nobody left to tow. The schedule simply needs more than 57 stands.
+#
+# SLOA V makes the South Concourse and all new construction common-use, so the
+# capacity exists. Sixteen is an assumption, arrived at by measurement: it is
+# the smallest allotment at which no day of 2023 is over capacity. It is
+# priced, not free - every turn on one costs the common-use tariff.
+COMMON_USE_GATE_COUNT = 16
+
+GATE_COUNT = PREFERENTIAL_GATE_COUNT + COMMON_USE_GATE_COUNT
+
+# The shortest time off-gate that justifies calling a tug. Moving an aircraft
+# for twenty minutes costs more in ramp effort than the gate time is worth.
+MIN_STAND_MINUTES = 30
 
 # When a turn is towed, how long the aircraft holds a gate on each end.
 ARRIVAL_GATE_MINUTES = 60      # deplaning, cleaning, servicing

@@ -65,6 +65,7 @@ def summarize(date_string, gates, cost_settings):
         "peak_demand": solution["minimum_possible_gates"],
         "idle_minutes": priced["idle_minutes"],
         "tows": priced["tows"],
+        "common_use_turns": priced["common_use_turns"],
         "total_cost": priced["total_cost"],
         # Turns per gate per day, against the 6.0 that SLOA V requires of a
         # preferential-use gate. See docs/how-the-industry-works.md.
@@ -98,6 +99,8 @@ def main():
         "carrier": config.CARRIER,
         "airport": config.AIRPORT,
         "gates_available": len(gates),
+        "preferential_gates": config.PREFERENTIAL_GATE_COUNT,
+        "common_use_gates": config.COMMON_USE_GATE_COUNT,
         "minimum_use_turns_per_day": config.MINIMUM_USE_TURNS_PER_DAY,
         "days": summaries,
     }

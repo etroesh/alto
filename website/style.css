@@ -115,7 +115,13 @@ body {
   letter-spacing: -.02em;
   margin: 0;
 }
-.masthead .tagline { color: var(--muted); font-size: 14px; }
+.masthead .expansion {
+  font-family: "Archivo", sans-serif;
+  font-weight: 600; font-size: 14px; color: var(--ink-2);
+  letter-spacing: -.005em;
+}
+.masthead .tagline { color: var(--muted); font-size: 13.5px; }
+.masthead .expansion + .tagline::before { content: "· "; }
 .masthead nav { margin-left: auto; display: flex; gap: 18px; font-size: 13px; }
 .masthead nav a { color: var(--accent); text-decoration: none; }
 .masthead nav a:hover { text-decoration: underline; }
@@ -260,6 +266,25 @@ button.tiny { padding: 3px 8px; font-size: 11.5px; font-weight: 500; }
   color: var(--accent); cursor: pointer; text-decoration: underline;
 }
 
+/* A small question mark that explains a term on hover or tap, so the
+   explanation is available without sitting on the page permanently. */
+button.info {
+  all: unset;
+  cursor: help;
+  display: inline-grid; place-items: center;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--muted);
+  color: var(--muted);
+  font-size: 9.5px; font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+  margin-left: 3px;
+}
+button.info:hover, button.info:focus-visible {
+  border-color: var(--accent); color: var(--accent);
+}
+
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .chip.gate {
   font-size: 10.5px;
@@ -382,6 +407,11 @@ svg.gantt .gate-label {
   font-size: 10px;
   fill: var(--ink-2);
 }
+/* A gate the scenario has closed: named, struck through, and its row shaded,
+   so you can see it is out of service without hunting for a missing line. */
+svg.gantt .gate-label.closed { fill: var(--delayed); text-decoration: line-through; }
+svg.gantt rect.closed-row { fill: var(--delayed); opacity: .07; }
+svg.gantt .band { fill: var(--ink); opacity: .025; }
 svg.gantt .bar { fill: var(--block); rx: 2; }
 svg.gantt .bar.tow { fill: var(--block-tow); }
 svg.gantt .bar.moved { fill: var(--moved); }
