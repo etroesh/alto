@@ -129,17 +129,20 @@
   <!-- ===================== 3 · What it cost ===================== -->
   <section class="step" id="results">
     <div class="step-head"><span class="step-num">3</span><h2>See what it cost</h2></div>
-    <p class="step-sub">Three runs of the same day: as scheduled, after your disruption with nobody reacting, and after the whole gate plan is re-solved around it. The gap between the second and the third is what the model is worth.</p>
+    <p class="step-sub">The same day run three times: as scheduled, after your disruption with nobody reacting, and after the whole gate plan is re-solved around it. The gap between the second and the third is what the model is worth.</p>
 
     <div class="step-body">
       <p class="verdict idle" id="verdict">Nothing broken yet. Delay an aircraft above, then press Run — it takes about a second.</p>
 
       <div class="figures" id="figures">
-        <div class="figure"><div class="label">Cost of the disruption</div><div class="value" id="fig-disruption">—</div></div>
+        <div class="figure"><div class="label">Added by the disruption</div><div class="value" id="fig-disruption">—</div></div>
         <div class="figure"><div class="label">Recovered by re&#8209;optimizing</div><div class="value recovered" id="fig-recovered">—</div></div>
         <div class="figure"><div class="label">Share of the damage recovered</div><div class="value" id="fig-share">—</div></div>
         <div class="figure"><div class="label">Aircraft moved to a new gate</div><div class="value" id="fig-moved">—</div></div>
       </div>
+
+      <p class="caption"><b>These are fees, not the cost of running an airline.</b> ALTO prices exactly three things — delay, aircraft parking and towing, and common-use gate charges — because those are the ones a gate plan changes. Fuel, crew, maintenance, landing fees and the rent on Alaska's own gates are all excluded: real money, but the same whichever plan you pick.</p>
+      <p class="caption">The big figure is the <em>difference</em> the disruption made, not a total. The normal day's fees are the first row of the table below.</p>
 
       <details class="explain">
         <summary>Where these numbers come from</summary>
@@ -154,12 +157,12 @@
         <table class="breakdown" id="breakdown">
           <thead>
             <tr>
-              <th>Scenario</th>
+              <th>Run</th>
               <th>Delay</th>
               <th>Gate use</th>
               <th>Towing</th>
               <th>Common use</th>
-              <th>Total</th>
+              <th>Fees</th>
               <th>Gates</th>
             </tr>
           </thead>

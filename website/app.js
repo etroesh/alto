@@ -228,7 +228,7 @@ function drawQuickPicks() {
     ["Busiest", extremeDay(days, "turns", true).date],
     ["Quietest", extremeDay(days, "turns", false).date],
     ["Most gates", extremeDay(days, "gates_used", true).date],
-    ["Costliest", extremeDay(days, "total_cost", true).date],
+    ["Highest fees", extremeDay(days, "total_cost", true).date],
   ];
 
   document.getElementById("quick-picks").innerHTML = picks.map(function (pick) {
@@ -267,7 +267,7 @@ function drawDayFacts() {
   if (busierThan === 0) note = "The busiest day of 2023 by aircraft visits - though the top ten days are within 1.5% of each other, all in late July and August.";
   else if (busierThan < 10) note = (note ? note + " " : "") + "One of the ten busiest days of the year, all of which fall in late July and August and sit within 1.5% of each other.";
   if (busierThan === days.length - 1) note = (note ? note + " " : "") + "The quietest day of the year — Thanksgiving Day is famously dead in the air; it is the days on either side that are busy.";
-  if (costlierThan === 0) note = (note ? note + " " : "") + "The most expensive day to run.";
+  if (costlierThan === 0) note = (note ? note + " " : "") + "The highest fees of any day in 2023.";
   if (day.gates_used > 57) {
     note = (note ? note + " " : "")
       + "Needs more than Alaska's 57 preferential gates — the overflow is billed per turn as common-use.";
@@ -281,9 +281,13 @@ function drawDayFacts() {
     + '<div class="row"><span>Stands needed</span><b>' + day.gates_used
       + (day.gates_used > 57 ? " — over its 57" : " of 57") + "</b></div>"
     + '<div class="row"><span>Turns per stand</span><b>' + day.turns_per_gate + "</b></div>"
-    + '<div class="row"><span>Cost to run</span><b>' + shortMoney(day.total_cost) + "</b></div>"
+    // NOT "cost to run". This is towing, parking and common-use fees only -
+    // it excludes fuel, crew, landing fees, rent and everything else an
+    // airline actually spends. A label implying otherwise would be a lie by
+    // omission on the most-read part of the page.
+    + '<div class="row"><span>Parking &amp; gate fees</span><b>' + shortMoney(day.total_cost) + "</b></div>"
     + '<div class="row"><span></span><b style="color:var(--muted);font-weight:400">'
-      + ordinal(costlierThan + 1) + " most expensive</b></div>"
+      + ordinal(costlierThan + 1) + " highest of the year</b></div>"
     + '<div class="row"><span>vs median day</span><b>'
       + (day.turns >= medianTurns ? "+" : "") + (day.turns - medianTurns) + " turns</b></div>"
     + (note ? '<div class="tag-note">' + note + "</div>" : "");
@@ -623,11 +627,11 @@ function verdictFor(result) {
   }
 
   if (result.disruption_cost <= 0) {
-    return cause + " costs nothing extra — the schedule absorbs it without a single "
-      + "aircraft waiting for a gate.";
+    return cause + " adds nothing — the schedule absorbs it without a single "
+      + "aircraft waiting for a gate, and no fee changes.";
   }
 
-  let text = cause + " costs <b>" + money(result.disruption_cost) + "</b>. "
+  let text = cause + " adds <b>" + money(result.disruption_cost) + "</b> to the day's fees. "
     + "Re-planning the whole day's gates gets <b class='up'>" + money(result.recovered_dollars)
     + "</b> of it back — " + result.recovered_percent + "% — by moving <b>"
     + result.aircraft_moved_count + "</b> aircraft to different gates";
