@@ -557,7 +557,7 @@ svg.gantt .bar.moved { fill: var(--moved); stroke: var(--moved-line); }
    model did, rust ring for what you did to it - rather than a fifth colour
    invented to hold the combination, which could not be kept far enough from
    the other four to stay readable. */
-svg.gantt .bar.moved.late { fill: var(--moved); stroke: var(--delayed); stroke-width: 2; }
+svg.gantt .bar.moved.late { fill: url(#hatch-late); stroke: var(--delayed-line); stroke-width: 1; }
 svg.gantt .bar.delayed { fill: var(--delayed); stroke: var(--delayed-line); }
 svg.gantt .bar { cursor: pointer; }
 svg.gantt .bar:hover { stroke: var(--ink); stroke-width: 2; }
@@ -579,7 +579,11 @@ svg.gantt .bar:hover { stroke: var(--ink); stroke-width: 2; }
 }
 .legend i.moved   { background: var(--moved);   border-color: var(--moved-line); }
 .legend i.delayed { background: var(--delayed); border-color: var(--delayed-line); }
-.legend i.moved.late { background: var(--moved); border-color: var(--delayed); border-width: 2px; }
+.legend i.moved.late {
+  border-color: var(--delayed-line);
+  background: repeating-linear-gradient(45deg,
+    var(--moved), var(--moved) 2px, var(--delayed) 2px, var(--delayed) 4px);
+}
 .legend em { font-style: italic; }
 
 /* ---- the before / after switch ----

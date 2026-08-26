@@ -374,6 +374,15 @@ function drawGantt(blocks) {
     + ' patternUnits="userSpaceOnUse" patternTransform="rotate(45)">'
     + '<rect width="6" height="6" fill="var(--block)"></rect>'
     + '<line x1="0" y1="0" x2="0" y2="6" stroke="var(--block-line)" stroke-width="1"></line>'
+    + "</pattern>"
+    // Moved AND late. A 2px rust outline on a blue bar was the first attempt
+    // and it was unreadable at this bar height - at 11 pixels tall the outline
+    // is most of the bar. Rust stripes over the blue fill read instantly, and
+    // reuse the texture language already established for a split visit.
+    + '<pattern id="hatch-late" width="6" height="6"'
+    + ' patternUnits="userSpaceOnUse" patternTransform="rotate(45)">'
+    + '<rect width="6" height="6" fill="var(--moved)"></rect>'
+    + '<line x1="0" y1="0" x2="0" y2="6" stroke="var(--delayed)" stroke-width="2.5"></line>'
     + "</pattern></defs>";
 
   // The time window, rounded out to whole hours so the grid lines land neatly.
