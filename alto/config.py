@@ -145,18 +145,25 @@ REMOTE_HARDSTAND_HOURS = 4
 RON_FEE_PER_12_HOURS = 200.00               # each of the first two periods
 RON_FEE_BEYOND_24_HOURS = 5000.00           # every 12-hour period after that
 
-# --- Derived: what one minute of gate time is worth ------------------------
-# The tariff prices a gate by the square foot per year, which tells us nothing
-# about the value of one idle minute. So we derive it from the common-use
-# per-turn fee instead, which IS a price for one use of one gate:
+# --- RETIRED: what one minute of idle gate time is worth --------------------
+# THIS IS NO LONGER USED IN ANY COST. It is left here, with its history, rather
+# than deleted, because the reason it went is the most useful thing about it.
 #
-#     $552.89 per narrowbody turn  /  90 minutes (our median turn)
-#     = $6.14 per minute of gate time
+# The derivation was: $552.89 per narrowbody common-use turn / 90-minute median
+# turn = $6.14 per minute, offered as the opportunity cost of a gate sitting
+# empty. It was the ONLY derived figure in the cost model - every other number
+# is quoted from a published tariff - and it is where the model broke.
 #
-# That is the opportunity cost of a gate sitting empty: time Alaska is paying
-# for and not using. It is an estimate built from a published price, which is
-# the most defensible thing available - no public source prices idle gate time
-# directly.
+# Pricing idle time made the model report that closing three gates SAVED money
+# (17 June, N1/N11/N20, minus $682). Fewer gates in use means fewer gaps to
+# count, and since neither solver optimises idle time, an improvised plan could
+# beat the "optimal" one on it. Because idle was the largest term, it swamped
+# everything else.
+#
+# The deeper problem is that idle time is not a charge. Rent on a preferential
+# gate is fixed by the lease and does not move when the plan changes, so it
+# carries no information about which plan is better. Gate use is now reported
+# as a utilisation percentage and priced at nothing. See docs/decisions.md D42.
 MEDIAN_TURN_MINUTES_FOR_PRICING = 90
 GATE_IDLE_COST_PER_MINUTE = COMMON_GATE_TURN_FEE_NARROWBODY / MEDIAN_TURN_MINUTES_FOR_PRICING
 

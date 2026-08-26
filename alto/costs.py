@@ -241,27 +241,58 @@ def price(blocks, assignment, simulation, costs=None):
 
     delay_cost = delay_minutes * costs["delay_cost_per_minute"]
 
-    # --- idle gate time ---------------------------------------------------
-    idle_minutes = 0.0
-    blocks_at_gate = {}
+    # --- gate utilisation, which is NOT a cost --------------------------
+    # IDLE GATE TIME USED TO BE PRICED HERE. IT NO LONGER IS, AND THAT IS THE
+    # MOST IMPORTANT CORRECTION IN THIS FILE.
+    #
+    # What went wrong. Idle was the sum of the gaps between consecutive
+    # aircraft at the gates in use, valued at a derived $6.14 a minute. On
+    # 17 June, closing N1, N11 and N20 with the exact solver produced a
+    # disruption cost of MINUS $682: closing gates appeared to SAVE money.
+    #
+    # The mechanism is simple once seen. Fewer gates in use means fewer
+    # gate-days spanned, so fewer gaps to count. Neither solver minimises idle
+    # anyway - the integer program minimises gate count then walking, the flow
+    # solver minimises gate count then movement - so idle was never optimised,
+    # only observed. An improvised first-fit after a closure could land on a
+    # tighter packing than the "optimal" plan, and because idle was the largest
+    # term ($105k of $146k that day) it swamped everything else.
+    #
+    # Rebasing it on leased capacity fixed the sign and produced a second
+    # absurdity: $1.14 million, because the day's window was being stretched by
+    # a single 36-hour turn.
+    #
+    # The real problem is that it should never have been a cost. This model's
+    # stated rule is that every figure is a charge the airline actually pays.
+    # Idle time is not billed. Alaska's rent on a preferential gate is fixed by
+    # the lease and does not move when the plan changes, so putting it in a
+    # COMPARISON of plans adds a large number that carries no information about
+    # the decision - and, as above, actively misleads. The $6.14 was also the
+    # only derived figure in the cost model, with no published source behind
+    # it, which is exactly where a model earns an argument it cannot win.
+    #
+    # So utilisation is still measured and still reported, as the statistic it
+    # always was. It is simply not added to a bill.
+    occupied_minutes = 0.0
     for position in positions:
         gate = assignment.get(position)
         if gate is None:
             continue
-        blocks_at_gate.setdefault(gate, []).append(position)
+        occupied_minutes = occupied_minutes + (
+            actual_end[position] - simulation["actual_start"][position]
+        )
 
-    for gate in blocks_at_gate:
-        queue = sorted(blocks_at_gate[gate], key=lambda p: simulation["actual_start"][p])
-        for index in range(1, len(queue)):
-            previous = queue[index - 1]
-            current = queue[index]
-            gap = (simulation["actual_start"][current]
-                   - actual_end[previous]
-                   - config.MIN_GATE_BUFFER_MINUTES)
-            if gap > 0:
-                idle_minutes = idle_minutes + gap
+    gates_in_use = len(set(
+        assignment[position] for position in assignment if assignment[position]
+    ))
+    starts = [simulation["actual_start"][position] for position in positions]
+    ends = [actual_end[position] for position in positions]
+    window_minutes = (max(ends) - min(starts)) if positions else 0.0
+    available_minutes = gates_in_use * window_minutes
+    utilisation = (occupied_minutes / available_minutes * 100.0) if available_minutes else 0.0
 
-    idle_cost = idle_minutes * costs["gate_idle_cost_per_minute"]
+    idle_minutes = max(available_minutes - occupied_minutes, 0.0)
+    idle_cost = 0.0                     # kept at zero, never added to a total
 
     # --- parking away from a gate ------------------------------------------
     # Not a flat fee. The tariff charges $100 for a hardstand use of up to four
@@ -296,12 +327,16 @@ def price(blocks, assignment, simulation, costs=None):
         "worst_single_delay": round(worst_delay, 1),
         "delay_cost": round(delay_cost, 2),
         "idle_minutes": round(idle_minutes, 1),
-        "idle_cost": round(idle_cost, 2),
+        "idle_cost": 0.0,               # retired - see the note above
+        "gate_utilisation_percent": round(utilisation, 1),
+        "gates_in_use": gates_in_use,
         "tows": tows,
         "towing_cost": round(towing_cost, 2),
         "common_use_turns": common_use_turns,
         "common_use_cost": round(common_use_cost, 2),
-        "total_cost": round(delay_cost + idle_cost + towing_cost + common_use_cost, 2),
+        # Delay, parking and common-use fees. Every one of them is a charge
+        # somebody sends Alaska an invoice for.
+        "total_cost": round(delay_cost + towing_cost + common_use_cost, 2),
     }
 
 

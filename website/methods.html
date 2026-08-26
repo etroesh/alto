@@ -283,11 +283,18 @@ SINK → SOURCE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;the return pipe — its flow IS the
   <tr><td>Delay cost</td><td class="num">$98.41 / min</td><td>A4A 2025 direct aircraft operating cost per block minute</td></tr>
   <tr><td>Common-use gate, narrowbody</td><td class="num">$552.89 / turn</td><td>Port of Seattle tariff, 1 Jan 2025, signatory rate</td></tr>
   <tr><td>Remote hardstand</td><td class="num">$100 / use</td><td>Port of Seattle tariff</td></tr>
-  <tr><td>Gate idle time</td><td class="num">$6.14 / min</td><td><em>Derived</em> — $552.89 ÷ 90-minute median turn</td></tr>
+  <tr><td><s>Gate idle time</s></td><td class="num"><s>$6.14 / min</s></td><td class="bad">Retired — see below</td></tr>
   <tr><td>Delay propagation</td><td class="num">0.75</td><td><em>Assumption</em> — no published figure exists</td></tr>
 </table></div>
 <p>The $98.41 breaks down as crew $37.01, fuel $29.34, maintenance $18.35, aircraft ownership $9.76, other $3.95. It is the <b>airline's own cost only</b>. A4A separately values passenger time at roughly $47 per hour, which ALTO does not include — so every disruption figure here is conservative.</p>
-<p>No public source prices an idle gate minute. The derivation above uses the only published price for a single use of a single gate, which is the most defensible construction available. The propagation factor has no source at all and is exposed as a slider for exactly that reason.</p>
+<p>The propagation factor has no source at all and is exposed as a slider for exactly that reason.</p>
+
+<div class="callout">
+  <span class="tag">Why idle gate time is no longer priced</span>
+  <p>It used to be, at a derived $6.14 a minute — the only figure in the cost model not quoted from a published tariff. It produced a result that cannot be true: on 17 June, closing gates N1, N11 and N20 gave a disruption cost of <b>minus $682</b>. Closing gates appeared to <em>save</em> money.</p>
+  <p>The mechanism is worth understanding. Idle was measured as the gaps between consecutive aircraft at the gates in use, so fewer gates in use meant fewer gaps to count. Neither solver minimises idle — the integer program minimises gate count and then walking — so idle was never optimised, only observed, and an improvised plan after a closure could beat the optimal one on it. Because idle was the largest term, at $105k of $146k that day, it swamped everything else.</p>
+  <p>The deeper problem is that idle time is not a charge. Rent on a preferential gate is fixed by the lease and does not move when the plan changes, so putting it in a comparison of plans adds a large number carrying no information about the decision. Every remaining figure is something an airline is actually invoiced for. Gate use is reported as a utilisation percentage instead.</p>
+</div>
 
 <!-- 7 -->
 <h2 id="disruption">7 · What a disruption costs</h2>

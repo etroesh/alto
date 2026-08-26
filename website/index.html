@@ -143,7 +143,8 @@
 
       <details class="explain">
         <summary>Where these numbers come from</summary>
-        <p>Delay is priced at the rate in the slider above. Idle gate time is priced at what a common-use turn costs per minute. Towing is $100 a movement, and a common-use stand is $552.89 a turn. Nothing here is a passenger-experience estimate — only charges an airline actually pays, which makes every figure a floor rather than a guess.</p>
+        <p>Delay is priced at the rate in the slider above. Towing is $100 a movement, and a common-use stand is $552.89 a turn. That is the whole bill — every figure is a charge somebody actually invoices Alaska for, which makes each one a floor rather than a guess.</p>
+      <p><b>Gate use is deliberately not priced.</b> Idle gate time costs an airline nothing directly: rent on a preferential gate is fixed by the lease and does not move when the plan changes. An earlier version did price it, and the result was a model that thought closing three gates <em>saved</em> money. It is reported as a utilisation percentage instead.</p>
       </details>
 
       <div class="tbl-scroll" style="margin-top:24px">
@@ -155,7 +156,7 @@
             <tr>
               <th>Scenario</th>
               <th>Delay</th>
-              <th>Idle gates</th>
+              <th>Gate use</th>
               <th>Towing</th>
               <th>Common use</th>
               <th>Total</th>
@@ -202,7 +203,7 @@
 
       <details class="explain">
         <summary>How to read this, and why it runs past midnight</summary>
-        <p>Read a row across to see one gate's whole day: back-to-back bars mean a hard-worked gate, gaps mean idle time you are paying for. Read a column down to see how much of the airport is in use at once — the tallest column is the day's peak, and that number is what decides how many gates Alaska needs.</p>
+        <p>Read a row across to see one gate's whole day: back-to-back bars mean a hard-worked gate, gaps mean capacity standing empty. Read a column down to see how much of the airport is in use at once — the tallest column is the day's peak, and that number is what decides how many gates Alaska needs.</p>
         <p>The chart runs into the following morning on purpose. An aircraft that lands at 11pm and departs at 6am is one continuous gate visit, and cutting it at midnight would hide half of it. About 16,870 visits in 2023 cross midnight this way.</p>
       </details>
     </div>

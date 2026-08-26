@@ -144,7 +144,17 @@ def build_model(blocks, gates, closed_gates=None):
 # BLOCK 2 - Solving it and reading the answer back
 # ===========================================================================
 
-def solve(blocks, gates, closed_gates=None, time_limit_seconds=300,
+# CBC gets 150 seconds, not 300.
+#
+# nginx gives the API 180 seconds before returning a gateway timeout, so a
+# solver allowed to run for 300 guarantees that the slowest days come back to
+# the visitor as an error page rather than as an answer. That happened in
+# production. The limit here has to sit BELOW the proxy's, with room for the
+# rest of the request.
+DEFAULT_TIME_LIMIT_SECONDS = 150
+
+
+def solve(blocks, gates, closed_gates=None, time_limit_seconds=DEFAULT_TIME_LIMIT_SECONDS,
           previous_assignment=None):
     """Solve the integer program. Returns a result shaped like the MCNF one,
     so the two can be compared directly and the API can use either."""
@@ -183,6 +193,18 @@ def solve(blocks, gates, closed_gates=None, time_limit_seconds=300,
 
     gates_used = sum(1 for g in gate_ids if pulp.value(y[g]) > 0.5)
 
+    # "proven_optimal" used to be hard-coded True, which is a claim this
+    # function is not always entitled to make: with a time limit set, CBC can
+    # stop early and still report a status of Optimal.
+    #
+    # But there IS a proof available here, and it does not depend on the
+    # solver. Gate occupancy is an interval graph, so its chromatic number
+    # equals its clique number - the sweep-line peak demand is exactly the
+    # minimum number of gates any valid plan can use. If the solver matched it,
+    # the gate count is provably optimal no matter how long CBC ran. Walking
+    # cost has no such proof, so the claim is now scoped to what is provable.
+    gate_count_proven_optimal = (gates_used == minimum_possible_gates)
+
     walk_cost = {}
     for row in gates.itertuples(index=False):
         walk_cost[row.gate_id] = row.walk_cost
@@ -194,7 +216,8 @@ def solve(blocks, gates, closed_gates=None, time_limit_seconds=300,
         "minimum_possible_gates": minimum_possible_gates,
         "assignment": assignment,
         "total_walk_cost": round(total_walk, 2),
-        "proven_optimal": True,
+        "proven_optimal": gate_count_proven_optimal,
+        "time_limit_seconds": time_limit_seconds,
         "variables": len(block_positions) * len(gate_ids) + len(gate_ids),
         "constraints": len(problem.constraints),
     }

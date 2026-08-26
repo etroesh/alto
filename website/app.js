@@ -578,7 +578,10 @@ function showFigures(result) {
     markup += "<tr>"
       + "<td>" + label + "</td>"
       + "<td>" + money(priced.delay_cost) + "</td>"
-      + "<td>" + money(priced.idle_cost) + "</td>"
+      // Not a price. Idle gate time is not billed to an airline, and pricing
+      // it made closing gates look like a saving - see docs/decisions.md D42.
+      + "<td>" + (priced.gate_utilisation_percent === undefined
+          ? "—" : priced.gate_utilisation_percent + "%") + "</td>"
       + "<td>" + money(priced.towing_cost) + "</td>"
       + "<td>" + money(priced.common_use_cost) + "</td>"
       + "<td><b>" + money(priced.total_cost) + "</b></td>"

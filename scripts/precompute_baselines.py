@@ -64,6 +64,7 @@ def summarize(date_string, gates, cost_settings):
         "gates_used": gates_used,
         "peak_demand": solution["minimum_possible_gates"],
         "idle_minutes": priced["idle_minutes"],
+        "gate_utilisation_percent": priced["gate_utilisation_percent"],
         "tows": priced["tows"],
         "common_use_turns": priced["common_use_turns"],
         "total_cost": priced["total_cost"],
