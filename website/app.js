@@ -258,7 +258,11 @@ function drawDayFacts() {
 
   let note = "";
   if (HOLIDAYS[day.date]) note = HOLIDAYS[day.date] + ".";
-  if (busierThan === 0) note = "The busiest day of 2023.";
+  // The top ten days sit within 1.5% of each other, so "the busiest day" is a
+  // near-tie decided by a handful of aircraft. Saying so is more honest than
+  // presenting one date as a fact - and it survives the data being improved.
+  if (busierThan === 0) note = "The busiest day of 2023 by aircraft visits - though the top ten days are within 1.5% of each other, all in late July and August.";
+  else if (busierThan < 10) note = (note ? note + " " : "") + "One of the ten busiest days of the year, all of which fall in late July and August and sit within 1.5% of each other.";
   if (busierThan === days.length - 1) note = (note ? note + " " : "") + "The quietest day of the year — Thanksgiving Day is famously dead in the air; it is the days on either side that are busy.";
   if (costlierThan === 0) note = (note ? note + " " : "") + "The most expensive day to run.";
   if (day.gates_used > 57) {

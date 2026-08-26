@@ -80,6 +80,25 @@
 <p>All times are converted to <b>absolute minutes since 1 January 00:00</b>. BTS stores clock times as <code>HHMM</code> integers, where comparing 1438 on the 15th against 0410 on the 16th gives the wrong order and every overnight turn becomes a special case. One integer per moment removes that entire class of bug.</p>
 <p>Arrivals crossing midnight are corrected: BTS stamps a flight with its <em>departure</em> date, so a red-eye landing at 04:10 records that time against the previous day. Detected by an arrival clock time earlier than its departure clock time.</p>
 
+<h3>Does this look like Seattle?</h3>
+<p>Before trusting a single number out of the model, the shape of the data was checked against what the airport itself publishes. The Port of Seattle says <b>August is the busiest travel month</b> at SEA, and that TSA expects the busiest checkpoint days to be <b>Sundays and Mondays, and again Thursdays and Fridays</b>. Neither fact was used to build anything — they are an outside check.</p>
+<div class="tbl-scroll"><table>
+  <tr><th>Day</th><th class="num">Mean aircraft visits</th><th>Named by the Port/TSA as busy?</th></tr>
+  <tr><td>Friday</td><td class="num">227.3</td><td class="ok">yes</td></tr>
+  <tr><td>Monday</td><td class="num">227.2</td><td class="ok">yes</td></tr>
+  <tr><td>Thursday</td><td class="num">227.2</td><td class="ok">yes</td></tr>
+  <tr><td>Sunday</td><td class="num">224.0</td><td class="ok">yes</td></tr>
+  <tr><td>Wednesday</td><td class="num">214.9</td><td>no</td></tr>
+  <tr><td>Tuesday</td><td class="num">212.5</td><td>no</td></tr>
+  <tr><td>Saturday</td><td class="num">199.1</td><td>no</td></tr>
+</table></div>
+<p>The four busiest weekdays in this dataset are exactly the four the airport names, and the three quietest are exactly the three it does not. Monthly means agree too: August is the highest month at <b>254.9</b> visits a day against February's <b>187.1</b>.</p>
+<div class="callout">
+  <span class="tag">A distinction worth keeping straight</span>
+  <p>TSA's busiest <em>day</em> of 2023 nationally was the Sunday after Thanksgiving, at 2.9 million passengers. In this dataset Thanksgiving week is unremarkable and Thanksgiving Day itself is the quietest day of the year. Both are true: the holiday peak is <b>full aeroplanes</b>, while the summer peak is <b>more aeroplanes</b>. Gates are consumed by aircraft, not by passengers, so this model tracks the second one.</p>
+</div>
+<p><b>On "the busiest day."</b> The single busiest day here is 28 July, at 267 aircraft visits — a Friday in the peak month. It is not a meaningful gap: the top ten days run 267 down to 263, a spread of <b>1.5%</b>, and all ten fall in late July and August. Which one ranks first changed when arrival-only and departure-only visits were added, because the margin is a handful of aircraft. Ranked by gate blocks instead, 7 August leads with 382; ranked by cost to run, 7 August again at $147,679; ranked by stands needed, 27 July at 36. The interface says so rather than presenting one date as a fact.</p>
+
 <!-- 2 -->
 <h2 id="turns">2 · Building turns, and the bug that broke the first attempt</h2>
 <p>A <b>turn</b> is one aircraft's ground visit: it lands, sits at a gate, and departs. The first version of this project built turns with a pandas merge on tail number and date. That is a cartesian join, and it is wrong.</p>
