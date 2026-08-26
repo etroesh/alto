@@ -294,6 +294,19 @@ def price(blocks, assignment, simulation, costs=None):
     idle_minutes = max(available_minutes - occupied_minutes, 0.0)
     idle_cost = 0.0                     # kept at zero, never added to a total
 
+    # --- aircraft with no gate at all ---------------------------------------
+    # A block with no gate is one whose stand was closed in this scenario and
+    # which nobody re-planned. It is not free and it is not invisible: it sits
+    # on a remote hardstand and is billed for it.
+    remote_parked = 0
+    remote_parking_cost = 0.0
+    for position in positions:
+        if assignment.get(position) is not None:
+            continue
+        remote_parked = remote_parked + 1
+        minutes = actual_end[position] - simulation["actual_start"][position]
+        remote_parking_cost = remote_parking_cost + parking_charge(minutes, costs)
+
     # --- parking away from a gate ------------------------------------------
     # Not a flat fee. The tariff charges $100 for a hardstand use of up to four
     # hours, and past that the Remain Overnight schedule takes over: $200 for
@@ -331,12 +344,15 @@ def price(blocks, assignment, simulation, costs=None):
         "gate_utilisation_percent": round(utilisation, 1),
         "gates_in_use": gates_in_use,
         "tows": tows,
-        "towing_cost": round(towing_cost, 2),
+        "towing_cost": round(towing_cost + remote_parking_cost, 2),
+        "remote_parked": remote_parked,
+        "remote_parking_cost": round(remote_parking_cost, 2),
         "common_use_turns": common_use_turns,
         "common_use_cost": round(common_use_cost, 2),
         # Delay, parking and common-use fees. Every one of them is a charge
         # somebody sends Alaska an invoice for.
-        "total_cost": round(delay_cost + towing_cost + common_use_cost, 2),
+        "total_cost": round(delay_cost + towing_cost + remote_parking_cost
+                            + common_use_cost, 2),
     }
 
 
@@ -499,12 +515,25 @@ def damage_and_recovery(blocks, gates, scenario, solver, baseline_solution=None)
 
     displaced_count = len(disrupted_blocks) - len(stubborn_assignment)
 
-    # Anything whose gate was closed gets improvised onto another gate, the
-    # way a controller would. Without this, closing gates appears to save
-    # money because the displaced aircraft stop being counted.
-    damage_assignment = first_fit_for_displaced(
-        disrupted_blocks, stubborn_assignment, open_gates
-    )
+    # WHERE A DISPLACED AIRCRAFT ACTUALLY GOES
+    # ----------------------------------------
+    # This used to hand every displaced aircraft to first_fit_for_displaced,
+    # which found it another gate "the way a controller would". That was wrong
+    # in a way that took a screenshot to notice: the greedy re-placement broke
+    # the very queues that were propagating delay, so closing MORE gates made
+    # a day CHEAPER. Measured on 15 July, closing 0/3/10/27 gates in Concourse
+    # C: damage of $143,904 / $131,013 / $120,507 / $80,944. Monotonically
+    # down. "Doing nothing" was quietly better than doing nothing.
+    #
+    # An aircraft whose gate is shut, with nobody re-planning, goes to a
+    # remote stand. The tariff prices that - $100 for a hardstand use up to
+    # four hours, then the Remain Overnight schedule - and price() charges it
+    # for every block left without a gate. Nothing is silently dropped, and
+    # the cost can only go up as more gates close.
+    #
+    # If there is genuinely nowhere to put the day's aircraft at all, the
+    # RECOVERY reports that as infeasible rather than inventing capacity.
+    damage_assignment = dict(stubborn_assignment)
 
     damage_simulation = simulate(disrupted_blocks, damage_assignment, costs)
     damage_price = price(disrupted_blocks, damage_assignment,

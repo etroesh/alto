@@ -101,7 +101,18 @@ def build_model(blocks, gates, closed_gates=None):
     walk_term = pulp.lpSum(
         x[b][g] * walk_cost[g] for b in block_positions for g in gate_ids
     )
-    problem += gates_term + walk_term
+
+    # A common-use turn is billed $552.89. An extra gate on Alaska's own
+    # concourse is billed nothing, because the lease is already paid. So a
+    # common-use turn has to outrank an extra gate in this objective, or the
+    # solver will buy one by spending the other - which it did, producing a
+    # re-plan that used one fewer gate and cost $21,010 more.
+    common_use_price = gate_price * len(blocks)
+    common_use_term = pulp.lpSum(
+        x[b][g] for b in block_positions for g in gate_ids if str(g).startswith("S")
+    ) * common_use_price
+
+    problem += common_use_term + gates_term + walk_term
 
     # --- rule 1: every block gets exactly one gate ------------------------
     for b in block_positions:

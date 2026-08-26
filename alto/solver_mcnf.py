@@ -253,6 +253,19 @@ def assign_chains_to_gates(chains, gates, previous_assignment=None,
     gate_ids = list(gates_by_walk["gate_id"])
     walk_costs = list(gates_by_walk["walk_cost"])
 
+    # A common-use stand is billed per turn. Walking cost alone put S gates at
+    # roughly 7.6 against C's 1.0 - about four times worse - while the real
+    # difference is $552.89 against nothing, because rent on Alaska's own
+    # gates is already paid. Four-to-one is nowhere near enough, and the
+    # consequence showed up on screen: a re-plan that used ONE fewer gate but
+    # six more common-use turns was reported as an improvement, recovering
+    # minus $21,010. The fee goes in the pairing cost so the solver reaches
+    # for a common-use stand only when there is no leased gate left.
+    common_use_fee = [
+        config.COMMON_GATE_TURN_FEE_NARROWBODY if str(gate_id).startswith("S") else 0.0
+        for gate_id in gate_ids
+    ]
+
     if len(chains) > len(gate_ids):
         # More chains than gates. The caller reports this as infeasible
         # rather than silently dropping aircraft.
@@ -265,9 +278,10 @@ def assign_chains_to_gates(chains, gates, previous_assignment=None,
         for gate_index, gate_id in enumerate(gate_ids):
 
             walking = len(chain) * walk_costs[gate_index]
+            fees = len(chain) * common_use_fee[gate_index]
 
             if previous_assignment is None:
-                cost_matrix[chain_index][gate_index] = walking
+                cost_matrix[chain_index][gate_index] = walking + fees
                 continue
 
             # How many aircraft in this chain would have to MOVE if we put
@@ -281,7 +295,10 @@ def assign_chains_to_gates(chains, gates, previous_assignment=None,
             # A move is worth far more than a unit of walking, so moves decide
             # the pairing and walking only breaks ties between equally
             # disruptive options.
-            cost_matrix[chain_index][gate_index] = moves * 1000.0 + walking
+            # Fees outrank moves: paying $552.89 a turn to avoid shuffling an
+            # aircraft between two gates it is already parked at is not a
+            # trade any airline would make.
+            cost_matrix[chain_index][gate_index] = fees + moves * 1000.0 + walking
 
     chain_rows, gate_columns = linear_sum_assignment(cost_matrix)
 
