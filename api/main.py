@@ -269,6 +269,11 @@ def day(date_string: str):
             "end": int(row["end_minute"]),
             "type": row["block_type"],
             "gate": assignment.get(position),
+            "from": row["arrival_origin"],
+            "to": row["departure_dest"],
+            "arrival_flight": int(row["arrival_flight"]),
+            "departure_flight": int(row["departure_flight"]),
+            "ground_minutes": int(row["ground_minutes"]),
         })
 
     return {
@@ -391,6 +396,8 @@ def optimize(request: ScenarioRequest):
             "gate": assignment.get(position),
             "was_at_gate": gate_before.get(block_id),
             "injected_delay": int(row.get("injected_delay", 0)),
+            "from": row.get("arrival_origin"),
+            "to": row.get("departure_dest"),
         })
     result["blocks"] = drawable
     result["gates_available"] = len(scenarios.available_gates(

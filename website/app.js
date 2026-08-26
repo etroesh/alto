@@ -419,6 +419,7 @@ function drawGantt(blocks) {
     rect.addEventListener("mousemove", function (event) {
       const data = rect.dataset;
       let text = "<b>" + data.tail + "</b> · gate " + data.gate + "<br>"
+        + (data.from ? data.from + " \u2192 SEA \u2192 " + data.to + "<br>" : "")
         + clockFromAbsoluteMinutes(data.start) + " – " + clockFromAbsoluteMinutes(data.end)
         + " (" + (data.end - data.start) + " min)";
       if (data.type !== "full") {
@@ -659,11 +660,23 @@ async function loadDay() {
     state.blocks = day.blocks;
     drawGantt(day.blocks);
 
-    // Fill the aircraft picker with the tails actually flying that day.
-    const tails = Array.from(new Set(day.blocks.map(function (b) { return b.tail; }))).sort();
+    // Fill the aircraft picker, in the order the aircraft arrive, and label
+    // each with where it came from and where it goes next. A bare list of tail
+    // numbers gives you no reason to pick one over another.
+    const seen = {};
+    const options = [];
+    day.blocks.forEach(function (block) {
+      if (seen[block.tail]) return;
+      seen[block.tail] = true;
+      const route = (block.from || "?") + " \u2192 SEA \u2192 " + (block.to || "?");
+      options.push({
+        tail: block.tail,
+        label: clockFromAbsoluteMinutes(block.start) + "  " + route + "  ·  " + block.tail,
+      });
+    });
     const select = document.getElementById("tail-select");
-    select.innerHTML = tails.map(function (tail) {
-      return '<option value="' + tail + '">' + tail + "</option>";
+    select.innerHTML = options.map(function (option) {
+      return '<option value="' + option.tail + '">' + option.label + "</option>";
     }).join("");
 
     setStatus("chart-status",
@@ -719,9 +732,12 @@ function renderDelayList() {
   if (tails.length === 0) { list.innerHTML = ""; return; }
 
   list.innerHTML = tails.map(function (tail) {
+    const block = state.blocks.filter(function (b) { return b.tail === tail; })[0];
+    const route = block ? (block.from || "?") + "\u2192" + (block.to || "?") : "";
     return '<div class="delay-row"><span class="tail">' + tail + "</span>"
-      + '<span class="mins">+' + state.delays[tail] + " min</span>"
-      + '<button class="tiny" data-remove="' + tail + '">remove</button></div>';
+      + '<span style="color:var(--muted)">' + route + "</span>"
+      + '<span class="mins">+' + state.delays[tail] + "</span>"
+      + '<button class="tiny" data-remove="' + tail + '">&times;</button></div>';
   }).join("");
 
   list.querySelectorAll("button[data-remove]").forEach(function (button) {

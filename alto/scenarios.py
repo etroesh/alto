@@ -135,6 +135,9 @@ def resolve_costs(cost_overrides=None):
         "delay_cost_per_minute": config.DELAY_COST_PER_MINUTE,
         "gate_idle_cost_per_minute": config.GATE_IDLE_COST_PER_MINUTE,
         "remote_hardstand_fee": config.REMOTE_HARDSTAND_FEE,
+        "remote_hardstand_hours": config.REMOTE_HARDSTAND_HOURS,
+        "ron_fee_per_12_hours": config.RON_FEE_PER_12_HOURS,
+        "ron_fee_beyond_24_hours": config.RON_FEE_BEYOND_24_HOURS,
         "common_gate_turn_fee": config.COMMON_GATE_TURN_FEE_NARROWBODY,
         "delay_propagation_factor": config.DELAY_PROPAGATION_FACTOR,
     }

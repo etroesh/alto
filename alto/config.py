@@ -52,38 +52,43 @@ MIN_TURN_MINUTES = 20
 # across that gap would invent a turn that never happened.
 MAX_TURN_MINUTES = 36 * 60
 
-# Aircraft get towed to a remote hardstand when a gate is NEEDED, not on a
-# timer. See occupancy_intervals() in build_turns.py for why the timer version
-# was wrong. These are the parameters that rule uses.
+# When an aircraft leaves the gate, and what that costs.
+#
+# These are the airport's own published limits, not our arithmetic. An earlier
+# version of this model invented a 180-minute threshold from a break-even
+# calculation. The Port of Seattle publishes an actual maximum, so the actual
+# maximum is what we use. See docs/verification.md.
+#
+# Port of Seattle tariff effective 1 January 2025, "Schedule of Maximum Gate
+# Occupancy Periods and Gate Delay Fees" (page 4D). Alaska's 737-800 and -900
+# seat 159 to 178, so the 100-199 seat row applies:
+#
+#     turnaround      120 minutes
+#     arrival only     60 minutes
+#     departure only   75 minutes
+#
+# Past the limit the airport charges a gate delay fee per 15-minute increment:
+# $250 for the first 90 minutes over, $500 to 240 minutes over, $1,000 beyond.
+# An aircraft staying at a gate for ten hours would owe tens of thousands of
+# dollars. It does not stay; it gets towed.
+MAX_GATE_OCCUPANCY_MINUTES = 120
+ARRIVAL_GATE_MINUTES = 60
+DEPARTURE_GATE_MINUTES = 75
+
+GATE_DELAY_FEE_PER_15_MIN_TO_90 = 250.0
+GATE_DELAY_FEE_PER_15_MIN_TO_240 = 500.0
+GATE_DELAY_FEE_PER_15_MIN_BEYOND = 1000.0
 
 # Alaska holds 57 PREFERENTIAL-USE gates at SEA: Concourse C, the North
-# Satellite, and a share of Concourse D. Preferential means Alaska has priority
-# on them and already pays rent, so using one more costs nothing at the margin.
+# Satellite, and a share of Concourse D. It pays rent on these, so one more
+# turn on one costs nothing at the margin.
 PREFERENTIAL_GATE_COUNT = 57
 
-# It also has access to COMMON-USE gates when its own are full, billed per turn
-# rather than rented. This is not a convenience added to make the model fit -
-# measuring forced it. With 57 gates and nothing else, Alaska's own schedule is
-# over capacity at the evening bank on 39 days of 2023, and by then every
-# aircraft on a gate is either still deplaning or already boarding: there is
-# nobody left to tow. The schedule simply needs more than 57 stands.
-#
-# SLOA V makes the South Concourse and all new construction common-use, so the
-# capacity exists. Sixteen is an assumption, arrived at by measurement: it is
-# the smallest allotment at which no day of 2023 is over capacity. It is
-# priced, not free - every turn on one costs the common-use tariff.
+# It can also use COMMON-USE gates, billed per turn rather than rented. SLOA V
+# makes the South Concourse and all new construction common use.
 COMMON_USE_GATE_COUNT = 16
 
 GATE_COUNT = PREFERENTIAL_GATE_COUNT + COMMON_USE_GATE_COUNT
-
-# The shortest time off-gate that justifies calling a tug. Moving an aircraft
-# for twenty minutes costs more in ramp effort than the gate time is worth.
-MIN_STAND_MINUTES = 30
-
-# When a turn is towed, how long the aircraft holds a gate on each end.
-ARRIVAL_GATE_MINUTES = 60      # deplaning, cleaning, servicing
-DEPARTURE_GATE_MINUTES = 60    # boarding, pushback prep
-
 
 # ---------------------------------------------------------------------------
 # Cost parameters
@@ -128,8 +133,16 @@ COMMON_GATE_TURN_FEE_NARROWBODY = 552.89    # Class 2, 100+ seats - Alaska's 737
 COMMON_GATE_TURN_FEE_REGIONAL = 276.45      # Class 3, 100 or fewer seats
 
 # Parking an aircraft away from a passenger gate.
+# Port of Seattle tariff. The hardstand fee covers a short stay; past four
+# hours the Remain Overnight schedule takes over, and it is deliberately
+# punishing after the first day.
+#
+# Note the exact scope, which matters: RON is charged for "parking of passenger
+# aircraft at Common Use gates and hardstands". Preferential gates are not
+# named. See docs/verification.md for what that does and does not establish.
 REMOTE_HARDSTAND_FEE = 100.00               # per use, up to 4 hours
-RON_FEE_PER_12_HOURS = 200.00               # first two 12-hour periods
+REMOTE_HARDSTAND_HOURS = 4
+RON_FEE_PER_12_HOURS = 200.00               # each of the first two periods
 RON_FEE_BEYOND_24_HOURS = 5000.00           # every 12-hour period after that
 
 # --- Derived: what one minute of gate time is worth ------------------------

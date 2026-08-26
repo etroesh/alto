@@ -43,11 +43,17 @@ def load_day(date_string, database_path=None):
         database_path = config.DATABASE_PATH
 
     connection = sqlite3.connect(database_path)
+    # The route is carried along for the interface: picking an aircraft to
+    # delay is much less arbitrary when you can see it came in from Anchorage
+    # and is going out to Boston.
     query = """
-        SELECT block_id, turn_id, tail_number, start_minute, end_minute, block_type
-        FROM gate_blocks
-        WHERE arrival_date = ?
-        ORDER BY start_minute
+        SELECT b.block_id, b.turn_id, b.tail_number, b.start_minute, b.end_minute,
+               b.block_type, t.arrival_origin, t.departure_dest,
+               t.arrival_flight, t.departure_flight, t.ground_minutes
+        FROM gate_blocks b
+        JOIN turns t ON t.turn_id = b.turn_id
+        WHERE b.arrival_date = ?
+        ORDER BY b.start_minute
     """
     blocks = pd.read_sql(query, connection, params=[date_string])
     connection.close()

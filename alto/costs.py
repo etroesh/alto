@@ -33,6 +33,8 @@ That ripple is the cost of doing nothing, and it is what re-optimizing
 recovers.
 """
 
+import math
+
 from alto import config, schedule
 
 
@@ -166,6 +168,38 @@ def simulate(blocks, assignment, costs=None, max_depth=None):
 # BLOCK 2 - Turning the simulation into dollars
 # ===========================================================================
 
+def parking_charge(minutes_away, costs):
+    """What the airport charges for one spell of parking away from a gate.
+
+    Port of Seattle tariff:
+      up to 4 hours              $100 hardstand fee
+      beyond that, per 12 hours  $200 for the first two periods
+                                 $5,000 for every period after that
+    """
+    if minutes_away <= 0:
+        return 0.0
+
+    if minutes_away <= costs["remote_hardstand_hours"] * 60:
+        return costs["remote_hardstand_fee"]
+
+    periods = int(math.ceil(minutes_away / (12 * 60.0)))
+    charge = costs["ron_fee_per_12_hours"] * min(periods, 2)
+    if periods > 2:
+        charge = charge + costs["ron_fee_beyond_24_hours"] * (periods - 2)
+    return charge
+
+
+def off_gate_minutes_for(blocks, arrival_position):
+    """How long this aircraft is away, measured between its two gate blocks."""
+    turn_id = blocks.iloc[arrival_position]["turn_id"]
+    same_turn = blocks[blocks["turn_id"] == turn_id]
+    departure_block = same_turn[same_turn["block_type"] == "departure"]
+    if len(departure_block) == 0:
+        return 0
+    return int(departure_block.iloc[0]["start_minute"]
+               - blocks.iloc[arrival_position]["end_minute"])
+
+
 def price(blocks, assignment, simulation, costs=None):
     """Add up what this day costs, broken into parts you can argue about.
 
@@ -229,11 +263,20 @@ def price(blocks, assignment, simulation, costs=None):
 
     idle_cost = idle_minutes * costs["gate_idle_cost_per_minute"]
 
-    # --- towing -----------------------------------------------------------
-    # One fee per tug movement. An "arrival" block means the aircraft was moved
-    # off its gate partway through its stay, so each one is a tow.
+    # --- parking away from a gate ------------------------------------------
+    # Not a flat fee. The tariff charges $100 for a hardstand use of up to four
+    # hours, and past that the Remain Overnight schedule takes over: $200 for
+    # each of the first two 12-hour periods, then $5,000 for every period after
+    # that. The last step is deliberately punishing - it is what stops carriers
+    # using Sea-Tac as a car park - and an aircraft sitting for two days costs
+    # far more than one sitting for six hours. A flat $100 hid all of that.
     tows = sum(1 for t in block_types if t == "arrival")
-    towing_cost = tows * costs["remote_hardstand_fee"]
+    towing_cost = 0.0
+    for position in positions:
+        if block_types[position] != "arrival":
+            continue
+        away = off_gate_minutes_for(blocks, position)
+        towing_cost = towing_cost + parking_charge(away, costs)
 
     # --- common-use gates -------------------------------------------------
     # Alaska pays rent on its own gates, so one more turn on those costs

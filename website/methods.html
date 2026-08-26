@@ -121,47 +121,38 @@
 <p>The 36-hour cutoff is supported by the tariff: the Port of Seattle charges $200 per 12-hour period for overnight parking and <b>$5,000</b> per 12-hour period beyond 24 hours. Aircraft do not sit.</p>
 
 <!-- 3 -->
-<h2 id="towing">3 · Where aircraft park, and the rule that was wrong</h2>
+<h2 id="towing">3 · Where aircraft park</h2>
 
-<p class="lead">This section replaces an earlier one. The first version of this model decided parking by a stopwatch, and measuring it showed that was wrong in a way that inverted the answer.</p>
-
-<h3>The rule that failed</h3>
-<p>The original rule was simple: any aircraft on the ground longer than three hours is towed to a remote hardstand and brought back to board. It was justified economically — gate time is worth about $6.14 a minute, a tow costs $100, so towing pays for itself past 136 minutes.</p>
-<p>The arithmetic was fine. The rule was still wrong, because it never asked whether anybody wanted the gate. At the busiest moment of 2023 it produced:</p>
-
-<div class="callout">
-  <span class="tag">The measurement that killed it</span>
-  <div class="math" style="margin:8px 0">
-19 aircraft at gates &nbsp;&nbsp;·&nbsp;&nbsp; 57 aircraft on remote hardstands &nbsp;&nbsp;·&nbsp;&nbsp; 57 gates available
-  </div>
-  <p>Gates standing empty while aircraft queued on stands. Across the year it towed <b>22,030 aircraft, 29% of all turns</b>, with a median ground time of ten hours — overwhelmingly overnight, when no other aircraft wants the gate at all.</p>
-</div>
-
-<h3>What ramps actually do</h3>
-<p>An aircraft sits at its gate until somebody else needs it. At three in the morning nobody does, so it stays. At the morning push everybody does, so whoever has the longest wait ahead of them gets moved.</p>
-<p>So towing is now <b>capacity-driven, not clock-driven</b>. The planner walks the year, and only when arrivals outnumber available stands does it tow — choosing the aircraft whose gate is being wasted hardest, and never one still deplaning or already boarding.</p>
+<p class="lead">Seattle-Tacoma publishes a maximum gate occupancy. Every number in this section is that document's, not ours.</p>
 
 <div class="tbl-scroll"><table>
-  <tr><th></th><th class="num">Clock rule</th><th class="num">Capacity rule</th></tr>
-  <tr><td>Aircraft towed per year</td><td class="num bad">22,030 (29%)</td><td class="num ok">95 (0.1%)</td></tr>
-  <tr><td>Peak aircraft on hardstands</td><td class="num bad">72</td><td class="num ok">7</td></tr>
-  <tr><td>At the year's peak moment</td><td class="num bad">19 at gates, 57 on stands</td><td class="num ok">gates filled first</td></tr>
+  <tr><th>Aircraft</th><th class="num">Turnaround</th><th class="num">Arrival only</th><th class="num">Departure only</th></tr>
+  <tr><td>400+ seats</td><td class="num">180 min</td><td class="num">75</td><td class="num">120</td></tr>
+  <tr><td>200–399 seats</td><td class="num">150 min</td><td class="num">60</td><td class="num">90</td></tr>
+  <tr><td><b>100–199 seats</b> — Alaska's 737-800/900</td><td class="num ok"><b>120 min</b></td><td class="num ok"><b>60</b></td><td class="num ok"><b>75</b></td></tr>
+  <tr><td>Under 100 seats</td><td class="num">90 min</td><td class="num">45</td><td class="num">45</td></tr>
 </table></div>
 
-<p><b>The honest consequence: towing turns out to be a minor effect, not a structural one.</b> The earlier version of this page claimed remote parking was what made Alaska's gate count workable. That claim came from the broken rule and has been withdrawn.</p>
+<p>Past the limit the airport charges a <b>gate delay fee per 15-minute increment</b>: $250 for the first 90 minutes over, $500 up to four hours over, <b>$1,000 beyond that</b>. An aircraft left at a gate overnight would owe tens of thousands of dollars. It is not left there.</p>
 
-<h3>What the correction exposed</h3>
-<p>Once parking followed capacity rather than a timer, the schedule stopped fitting. Alaska's own 57 preferential gates are not enough: on <b>64 days of 2023 the mainline operation needs more than 57 stands</b>, peaking at <b>73</b>. At the moment it broke, every one of the 63 aircraft on a gate was either still deplaning or already boarding — there was nobody left to tow.</p>
-<p>That is not a modelling failure, it is the finding. So the roster now separates two things the tariff already prices differently:</p>
-<ul>
-  <li><b>57 preferential-use gates</b> — Alaska pays rent on these, so one more turn costs nothing at the margin.</li>
-  <li><b>16 common-use stands</b> — billed <b>$552.89 per turn</b>. The optimizer reaches for them only when its own gates are full, which is how a real airline treats them. Sixteen is an assumption, arrived at by measurement: the smallest allotment at which no day of 2023 is over capacity.</li>
-</ul>
-<p>Overflow is therefore visible as money rather than as a footnote. On 7 August 2023, the worst day, Alaska needs all 73 stands and buys <b>17 common-use turns — $9,399</b>.</p>
+<p>Industry practice says the same thing in plainer words. An aircraft going out of service for the day is "parked on a remote area of the airport, or at least pushed back away from the boarding gate" — the procedure known as <b>Remain Overnight</b>.</p>
 
-<div class="callout good">
-  <span class="tag">Why this is on the page</span>
-  <p>The broken rule produced a plausible number, a tidy story, and a headline result. Nothing about it looked wrong from the outside. It was caught by asking a question the model had not been asked before — <em>where are the aircraft actually parked at the busiest moment?</em> — and getting an answer that made no physical sense.</p>
+<p>So a turn longer than the published maximum becomes <b>two gate blocks</b>: the arrival, sized to the airport's 60-minute arrival-only limit; the aircraft towed away; then a return to board, sized to the 75-minute departure-only limit. Those block lengths are the tariff's, not ours.</p>
+
+<h3>What parking away costs</h3>
+<p>Not a flat fee, which is how an earlier version of this model had it.</p>
+<div class="math">
+up to 4 hours&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;$100&nbsp;&nbsp;&nbsp;remote hardstand fee<br>
+each of the next two&nbsp;&nbsp;&nbsp;&nbsp;$200&nbsp;&nbsp;&nbsp;per 12-hour period<br>
+every period after that&nbsp;$5,000&nbsp;&nbsp;&nbsp;per 12-hour period
+</div>
+<p>That last step is deliberately punishing — it is what stops carriers using Sea-Tac as a car park — and it means an aircraft sitting for two days costs vastly more than one sitting for six hours. A flat $100 hid all of it.</p>
+
+<div class="callout">
+  <span class="tag">A correction, kept on the page</span>
+  <p>For a day this model used a different rule: tow only when another aircraft needs the gate, reasoning that at three in the morning nobody wants it. <b>That reasoning was never checked against a source, and it was wrong.</b> The tariff's occupancy limits and its Remain Overnight schedule are both built around aircraft not sitting at gates, and industry practice is to move them off.</p>
+  <p style="margin-top:10px">The evidence that seemed damning at the time — gates sitting empty overnight while remote stands filled up — turns out to be simply what a hub looks like at five in the morning.</p>
+  <p style="margin-top:10px">Every parameter in the model now carries its source in <a href="https://github.com/etroesh/alto/blob/main/docs/verification.md">docs/verification.md</a>, marked <b>verified</b>, <b>derived</b> or <b>assumed</b>. Two entries are marked only <em>partially</em> verified, and both are named there rather than glossed.</p>
 </div>
 
 <!-- 4 -->
