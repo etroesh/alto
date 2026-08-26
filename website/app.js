@@ -34,6 +34,9 @@ const state = {
   costOverrides: {},
   useExactSolver: false,
   blocks: [],            // what the chart is drawing right now
+  beforeBlocks: [],      // the day as scheduled, kept so it can be compared
+  afterBlocks: [],       // the day after the disruption and the re-plan
+  view: "before",        // which of the two the chart is showing
   yearDays: [],
 };
 
@@ -305,6 +308,37 @@ function routeLabel(from, to) {
   return "SEA";
 }
 
+/* ---- BEFORE AND AFTER ---------------------------------------------------
+   The chart answers "what does the day look like?" - but the question people
+   actually have is "what did the disruption change?", and that is a
+   comparison. Holding both plans and switching between them in place answers
+   it far better than either picture on its own: the rows do not move, so what
+   moved is what your eye catches. */
+
+function setChartView(view) {
+  const hasAfter = state.afterBlocks.length > 0;
+  if (view === "after" && !hasAfter) view = "before";
+  state.view = view;
+
+  state.blocks = view === "after" ? state.afterBlocks : state.beforeBlocks;
+  drawGantt(state.blocks);
+
+  document.querySelectorAll("#chart-view button").forEach(function (button) {
+    const isCurrent = button.dataset.view === view;
+    button.setAttribute("aria-pressed", isCurrent ? "true" : "false");
+    button.disabled = button.dataset.view === "after" && !hasAfter;
+  });
+
+  const note = document.getElementById("chart-view-note");
+  if (note) {
+    note.textContent = !hasAfter
+      ? "Run a scenario to compare the two."
+      : (view === "before"
+        ? "The day as Alaska actually scheduled it."
+        : "After the disruption and the re-plan. Blue is an aircraft that changed gate.");
+  }
+}
+
 function drawGantt(blocks) {
   const svg = document.getElementById("gantt");
 
@@ -420,9 +454,16 @@ function drawGantt(blocks) {
 
     // The class decides the colour, and the order here is the priority order:
     // a moved aircraft is the thing worth seeing first.
+    // Priority order, and the reason for it: a moved aircraft is the thing the
+    // model DID, so it wins the fill. Lateness is what you asked for, so when
+    // both are true the bar keeps the blue fill and takes a rust outline -
+    // one mark, two facts, no fifth colour invented to hold the combination.
     let className = "bar";
-    if (block.was_at_gate && block.was_at_gate !== block.gate) className += " moved";
-    else if (block.injected_delay > 0) className += " delayed";
+    const moved = block.was_at_gate && block.was_at_gate !== block.gate;
+    const late = block.injected_delay > 0;
+    if (moved && late) className += " moved late";
+    else if (moved) className += " moved";
+    else if (late) className += " delayed";
     else if (block.type === "arrival" || block.type === "departure") className += " tow";
 
     markup += '<rect class="' + className + '"'
@@ -451,13 +492,25 @@ function drawGantt(blocks) {
         + routeLabel(data.from, data.to) + "<br>"
         + clockFromAbsoluteMinutes(data.start) + " – " + clockFromAbsoluteMinutes(data.end)
         + " (" + (data.end - data.start) + " min)";
+
+      // What the colour is telling you, spelled out. An aircraft can be both
+      // moved AND late, and the bar can only be one colour - so the tooltip
+      // has to carry both, and name the gate it came from rather than leaving
+      // "moved" as a fact with no detail.
+      const wasMoved = data.was && data.was !== data.gate;
+      const isLate = Number(data.delay) > 0;
+      if (wasMoved) {
+        text += "<br><b>moved: " + data.was + " \u2192 " + data.gate + "</b>";
+      }
+      if (isLate) {
+        text += "<br><b>" + data.delay + " min late</b>"
+          + (wasMoved ? " — and moved because of it" : "");
+      }
       // Four kinds of block, and each means something different on the chart.
       if (data.type === "arrival") text += "<br>arrival block, towed after";
       else if (data.type === "departure") text += "<br>brought back to board";
       else if (data.type === "arrival_only") text += "<br>arrival only - no onward flight in this data";
       else if (data.type === "departure_only") text += "<br>departure only - no arrival in this data";
-      if (data.was && data.was !== data.gate) text += "<br>moved from " + data.was;
-      if (Number(data.delay) > 0) text += "<br>" + data.delay + " min late";
       showTooltip(event, text);
     });
     rect.addEventListener("mouseleave", hideTooltip);
@@ -751,8 +804,9 @@ async function loadDay() {
 
   try {
     const day = await getJson("/api/day/" + state.date);
-    state.blocks = day.blocks;
-    drawGantt(day.blocks);
+    state.beforeBlocks = day.blocks;
+    state.afterBlocks = [];
+    setChartView("before");
 
     // Fill the aircraft picker, in the order the aircraft arrive, and label
     // each with where it came from and where it goes next. A bare list of tail
@@ -802,8 +856,8 @@ async function runScenario() {
 
     showFigures(result);
     setVerdict(verdictFor(result), false);
-    state.blocks = result.blocks;
-    drawGantt(result.blocks);
+    state.afterBlocks = result.blocks;
+    setChartView("after");
 
     // Bring the answer to the reader rather than leaving four numbers to change
     // quietly somewhere below the fold.
@@ -872,6 +926,10 @@ function wireControls() {
   document.getElementById("date-input").addEventListener("change", function (event) {
     state.date = event.target.value;
     loadDay();
+  });
+
+  document.querySelectorAll("#chart-view button").forEach(function (button) {
+    button.addEventListener("click", function () { setChartView(button.dataset.view); });
   });
 
   document.getElementById("add-delay").addEventListener("click", function () {

@@ -35,7 +35,7 @@
   <!-- ===================== 1 · Pick a day ===================== -->
   <section class="step">
     <div class="step-head"><span class="step-num">1</span><h2>Pick a day</h2></div>
-    <p class="step-sub">Every bar is one real day of 2023. Click one — the tall stretch through July and August is the summer peak.</p>
+    <p class="step-sub">Every bar is one real day of 2023. Click one to load it.</p>
 
     <div class="step-body">
       <svg class="year-strip" id="year-strip" role="img" aria-label="Aircraft visits on each day of 2023"></svg>
@@ -176,6 +176,14 @@
     <p class="step-sub">One row per gate, time running left to right. Each bar is one aircraft holding one gate — hover any of them for the tail number and where it is going.</p>
 
     <div class="step-body">
+      <div class="chart-view">
+        <div class="switch" id="chart-view" role="group" aria-label="Which plan the chart shows">
+          <button type="button" data-view="before" aria-pressed="true">Before</button>
+          <button type="button" data-view="after" aria-pressed="false" disabled>After</button>
+        </div>
+        <span class="chart-view-note" id="chart-view-note">Run a scenario to compare the two.</span>
+      </div>
+
       <div class="legend">
         <span><i></i> at gate</span>
         <span><i class="tow"></i> half of a split visit
@@ -184,6 +192,7 @@
         </span>
         <span><i class="moved"></i> moved to a different gate</span>
         <span><i class="delayed"></i> running late</span>
+        <span><i class="moved late"></i> moved <em>and</em> late</span>
       </div>
 
       <div class="chart-wrap">

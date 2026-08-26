@@ -553,6 +553,11 @@ svg.gantt .bar { fill: var(--block); stroke: var(--block-line); stroke-width: 1;
    so the hatch marks "this is half of one visit", not "this bar is off-gate". */
 svg.gantt .bar.tow { fill: url(#hatch); }
 svg.gantt .bar.moved { fill: var(--moved); stroke: var(--moved-line); }
+/* Both moved and late. One mark carrying two facts - blue fill for what the
+   model did, rust ring for what you did to it - rather than a fifth colour
+   invented to hold the combination, which could not be kept far enough from
+   the other four to stay readable. */
+svg.gantt .bar.moved.late { fill: var(--moved); stroke: var(--delayed); stroke-width: 2; }
 svg.gantt .bar.delayed { fill: var(--delayed); stroke: var(--delayed-line); }
 svg.gantt .bar { cursor: pointer; }
 svg.gantt .bar:hover { stroke: var(--ink); stroke-width: 2; }
@@ -574,6 +579,24 @@ svg.gantt .bar:hover { stroke: var(--ink); stroke-width: 2; }
 }
 .legend i.moved   { background: var(--moved);   border-color: var(--moved-line); }
 .legend i.delayed { background: var(--delayed); border-color: var(--delayed-line); }
+.legend i.moved.late { background: var(--moved); border-color: var(--delayed); border-width: 2px; }
+.legend em { font-style: italic; }
+
+/* ---- the before / after switch ----
+   Two states of one thing, so it is one control with two halves rather than
+   two buttons that happen to sit together. */
+.chart-view { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.switch { display: inline-flex; border: 1px solid var(--ink); }
+.switch button {
+  border: none; border-radius: 0; margin: 0;
+  padding: 8px 20px;
+  background: transparent; color: var(--ink);
+}
+.switch button + button { border-left: 1px solid var(--ink); }
+.switch button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.switch button[disabled] { color: var(--muted); cursor: default; }
+.switch button[disabled]:hover { background: transparent; color: var(--muted); }
+.chart-view-note { font-style: italic; color: var(--muted); font-size: 15px; }
 
 .tooltip {
   position: fixed;
