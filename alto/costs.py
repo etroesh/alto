@@ -536,6 +536,44 @@ def damage_and_recovery(blocks, gates, scenario, solver, baseline_solution=None)
     damage_assignment = dict(stubborn_assignment)
 
     damage_simulation = simulate(disrupted_blocks, damage_assignment, costs)
+
+    # THE FLOOR: closing a gate cannot make another aircraft leave EARLIER.
+    #
+    # Without this, taking aircraft off gates removes them from gate
+    # contention, the simulated delay for the whole day falls, and a bigger
+    # closure comes out cheaper than a smaller one. Measured on 15 July,
+    # closing 0/3/10/27 gates in Concourse C gave damage totals of $82,816 /
+    # $85,139 / $94,239 / $79,009 - rising correctly, then falling at the
+    # largest closure.
+    #
+    # It is floored rather than modelled because the alternative needs a
+    # number nobody publishes: an aircraft on a remote stand cannot board, so
+    # its departure should slip, and by how much is not knowable from any
+    # source this project has. What IS certain is the direction - a closure
+    # never improves anyone's departure.
+    #
+    # The reference has to be the SAME DISRUPTED DAY WITH NOTHING CLOSED, not
+    # the undisrupted baseline. Flooring against the baseline was tried first
+    # and left a residual: closing three gates still came out $9 cheaper than
+    # closing none, because the 53 aircraft it displaced left the gate queues
+    # and their propagated delay fell back to the floor while the parking
+    # fees they added did not quite cover it. Small, but the same wrong sign,
+    # and a test that passes because a number is small is not a test.
+    #
+    # This costs one extra simulate and no solve: every block simply keeps
+    # the gate the baseline gave it, closures ignored.
+    unclosed_assignment = {}
+    for position in range(len(disrupted_blocks)):
+        block_id = disrupted_blocks.loc[position, "block_id"]
+        gate = gate_by_block_id.get(block_id)
+        if gate is not None:
+            unclosed_assignment[position] = gate
+    unclosed_simulation = simulate(disrupted_blocks, unclosed_assignment, costs)
+
+    for position in range(len(disrupted_blocks)):
+        floor = unclosed_simulation["actual_end"][position]
+        if floor > damage_simulation["actual_end"][position]:
+            damage_simulation["actual_end"][position] = floor
     damage_price = price(disrupted_blocks, damage_assignment,
                          damage_simulation, costs)
 
