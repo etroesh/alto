@@ -296,8 +296,8 @@ const TOP_MARGIN = 20;
 // each case gets its own honest label.
 function routeLabel(from, to) {
   if (from && to) return from + " \u2192 SEA \u2192 " + to;
-  if (from) return from + " \u2192 SEA  (stays)";
-  if (to) return "SEA \u2192 " + to + "  (first flight)";
+  if (from) return from + " \u2192 SEA  (arrival only)";
+  if (to) return "SEA \u2192 " + to + "  (departure only)";
   return "SEA";
 }
 
@@ -438,8 +438,8 @@ function drawGantt(blocks) {
       // Four kinds of block, and each means something different on the chart.
       if (data.type === "arrival") text += "<br>arrival block, towed after";
       else if (data.type === "departure") text += "<br>brought back to board";
-      else if (data.type === "arrival_only") text += "<br>arrives and stays - no onward flight in the data";
-      else if (data.type === "departure_only") text += "<br>first flight of the day - no arrival in the data";
+      else if (data.type === "arrival_only") text += "<br>arrival only - no onward flight in this data";
+      else if (data.type === "departure_only") text += "<br>departure only - no arrival in this data";
       if (data.was && data.was !== data.gate) text += "<br>moved from " + data.was;
       if (Number(data.delay) > 0) text += "<br>" + data.delay + " min late";
       showTooltip(event, text);
