@@ -332,6 +332,16 @@ function drawGantt(blocks) {
   const rowOf = {};
   gates.forEach(function (gate, index) { rowOf[gate] = index; });
 
+  // An aircraft parked away from the terminal is the SAME aircraft, so it gets
+  // the same colour under a diagonal hatch rather than a colour of its own.
+  // Four separate hues could not be kept far enough apart to stay readable to
+  // a colour-blind viewer; a texture costs nothing and never collides.
+  const HATCH = '<defs><pattern id="hatch" width="6" height="6"'
+    + ' patternUnits="userSpaceOnUse" patternTransform="rotate(45)">'
+    + '<rect width="6" height="6" fill="var(--block)"></rect>'
+    + '<line x1="0" y1="0" x2="0" y2="6" stroke="var(--block-line)" stroke-width="1"></line>'
+    + "</pattern></defs>";
+
   // The time window, rounded out to whole hours so the grid lines land neatly.
   let earliest = Infinity;
   let latest = -Infinity;
@@ -350,7 +360,7 @@ function drawGantt(blocks) {
     return LABEL_WIDTH + ((minute - earliest) / (latest - earliest)) * plotWidth;
   }
 
-  let markup = "";
+  let markup = HATCH;
 
   // Hour grid and the time axis along the top.
   //
@@ -402,8 +412,10 @@ function drawGantt(blocks) {
   // The aircraft.
   blocks.forEach(function (block) {
     if (!block.gate) return;
-    const x = xOf(block.start);
-    const barWidth = Math.max(xOf(block.end) - x, 2);
+    // Inset by a pixel each side: two adjacent aircraft at one gate then show
+    // a 2px gap of paper between them, and the hairline edge stays visible.
+    const x = xOf(block.start) + 1;
+    const barWidth = Math.max(xOf(block.end) - xOf(block.start) - 2, 2);
     const y = TOP_MARGIN + rowOf[block.gate] * ROW_HEIGHT + 2;
 
     // The class decides the colour, and the order here is the priority order:
@@ -660,9 +672,8 @@ async function loadYear() {
     drawDayFacts();
     const turns = state.yearDays.map(function (d) { return d.turns; });
     setStatus("year-status",
-      "Daily turns in grey, seven-day average in blue · "
-      + Math.min.apply(null, turns) + " to " + Math.max.apply(null, turns)
-      + " turns a day · click any day");
+      "Between " + Math.min.apply(null, turns) + " and " + Math.max.apply(null, turns)
+      + " aircraft visits a day across 2023.");
   } catch (error) {
     setStatus("year-status", "Could not load the year summary: " + error.message, true);
   }

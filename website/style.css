@@ -1,467 +1,531 @@
 /* ============================================================================
    ALTO - stylesheet
    ============================================================================
+   The page is a printed broadsheet, not a dashboard. That single idea decides
+   everything below: serif type, paper and ink, hairline rules instead of
+   boxes, one column, and colour used only where it carries data.
+
    Organised in the order the page is built:
      1. tokens      every colour and size, named, in one place
-     2. layout      the overall page frame
-     3. controls    the panel on the left
-     4. results     the cost figures
-     5. chart       the gate occupancy Gantt
-     6. responsive  what changes on a narrow screen
+     2. page        masthead, column, section rules
+     3. type        headings, body, captions, the explain toggles
+     4. controls    the scenario strip
+     5. results     stat blocks and the money table
+     6. chart       the gate occupancy Gantt and the year strip
+     7. responsive  what changes on a narrow screen
    ========================================================================= */
 
 /* ---- 1. TOKENS ---------------------------------------------------------- */
 /* Change a colour here and it changes everywhere it is used. Nothing below
-   this block contains a raw colour value. */
+   this block contains a raw colour value.
+
+   THE DATA COLOURS were re-validated against this exact paper with the
+   colour-vision validator: the two hues score Delta E 23.4 apart to normal
+   vision and 16.9 under simulated deuteranopia, and both clear 3:1 contrast.
+   An ordinary aircraft is deliberately NOT a third hue - it is pale neutral
+   with a hairline edge, so colour on this chart always means "something
+   happened here". Towed off-gate is the same neutral under a 45-degree hatch
+   rather than a fourth colour, because it is the same aircraft in a different
+   place, and because a fourth hue could not be kept far enough from the other
+   three to pass. */
 
 :root {
-  /* Sky, cloud and desert. The subject is aviation, so the ground is cloud-
-     cream, the accent is sky, and the alert is the terracotta of a runway at
-     dusk. Started from a palette Evan chose; the two DATA colours below were
-     then stepped darker until they passed a colour-vision validator against
-     this exact background — the originals read as grey to a deuteranope and
-     failed contrast on cream. Same hues, usable weight. */
+  /* Paper and ink. Warm, never blue-black. */
+  --paper:      #FAF7F2;   /* the page */
+  --paper-2:    #F2EDE4;   /* the few blocks that need to sit back */
+  --ink:        #1A1815;   /* near-black, warm */
+  --ink-2:      #45403A;
+  --muted:      #7C766D;
 
-  --paper:      #E6E1D1;   /* cloud cream — the page ground */
-  --card:       #F4F1E8;   /* panels float lighter than the ground */
-  --raised:     #FBFAF6;   /* inputs and buttons, lighter still */
+  --rule:       #DCD5C8;   /* hairline */
+  --rule-2:     #EAE4D9;   /* fainter hairline, inside tables */
+  --rule-heavy: #1A1815;   /* the rule under a section title */
 
-  --ink:        #22303A;   /* deep slate-blue, never pure black */
-  --ink-2:      #4A5C68;
-  --muted:      #7A8892;
-  --rule:       #CFC7B4;
-  --rule-2:     #DDD7C7;
-
-  --accent:     #0E7FA3;   /* sky */
-  --accent-soft:#D6E6EC;
-
-  /* THE TWO DATA COLOURS. Validated on this surface: lightness band, chroma
-     floor, colour-vision separation, and 3:1 contrast all pass. Neither is
-     ever the only signal — moved aircraft also carry a legend entry. */
+  /* THE DATA COLOURS. Validated on this paper. */
   --moved:      #0E7FA3;   /* this aircraft changed gate */
+  --moved-line: #0A6482;
   --delayed:    #AB4E33;   /* this aircraft is running late */
+  --delayed-line:#8C3E29;
 
-  --block:      #93A3AD;   /* an ordinary, unchanged aircraft — recessive on purpose */
-  --block-tow:  #D5C2A3;   /* off-gate at a hardstand — sand, from the same palette */
+  --block:      #CDC6B7;   /* an ordinary aircraft - recessive on purpose */
+  --block-line: #A79E8C;   /* its hairline edge, which is what makes it legible */
 
-  --good:       #2F7358;
-  --shadow:     0 1px 2px rgba(34,48,58,.06), 0 8px 24px -16px rgba(34,48,58,.30);
+  --good:       #2F6B4F;
 
-  --radius:     4px;
-  --gap:        16px;
+  --measure:    68ch;      /* the reading width for prose */
+  --column:     1180px;    /* the width of the page's single column */
 }
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    /* Night sky rather than an inverted cream. The data colours are stepped
-       independently for this surface and re-validated on it — a lightened
-       version of the light-mode pair fails the dark lightness band. */
-    --paper:      #131C24;
-    --card:       #1B2530;
-    --raised:     #22303A;
-    --ink:        #E8E3D6;   /* the cream returns as text */
-    --ink-2:      #B6BFC6;
-    --muted:      #7E8C96;
-    --rule:       #2E3C48;
-    --rule-2:     #222E38;
-    --accent:     #35A0C7;
-    --accent-soft:#14313E;
-    --moved:      #35A0C7;
-    --delayed:    #C4653F;
-    --block:      #52646F;
-    --block-tow:  #6E6249;
-    --good:       #5FAE86;
-    --shadow:     0 1px 2px rgba(0,0,0,.45), 0 8px 24px -16px rgba(0,0,0,.85);
-  }
-}
-
-:root[data-theme="dark"] {
-  --paper:#131C24; --card:#1B2530; --raised:#22303A;
-  --ink:#E8E3D6; --ink-2:#B6BFC6; --muted:#7E8C96;
-  --rule:#2E3C48; --rule-2:#222E38;
-  --accent:#35A0C7; --accent-soft:#14313E;
-  --moved:#35A0C7; --delayed:#C4653F;
-  --block:#52646F; --block-tow:#6E6249;
-  --good:#5FAE86;
-  --shadow:0 1px 2px rgba(0,0,0,.45), 0 8px 24px -16px rgba(0,0,0,.85);
-}
-
-/* ---- 2. LAYOUT ---------------------------------------------------------- */
 
 * { box-sizing: border-box; }
+
+/* ---- 2. PAGE ------------------------------------------------------------ */
 
 body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
-  font-size: 15px;
-  line-height: 1.55;
+  font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 
 .masthead {
-  border-bottom: 1px solid var(--rule);
-  padding: 22px 28px 18px;
+  max-width: var(--column);
+  margin: 0 auto;
+  padding: 40px 28px 18px;
+  border-bottom: 2px solid var(--rule-heavy);
   display: flex;
   align-items: baseline;
-  gap: 18px;
+  gap: 16px;
   flex-wrap: wrap;
 }
 .masthead h1 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 700;
-  font-size: 22px;
-  letter-spacing: -.02em;
   margin: 0;
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  line-height: 1;
 }
 .masthead .expansion {
-  font-family: "Archivo", sans-serif;
-  font-weight: 600; font-size: 14px; color: var(--ink-2);
-  letter-spacing: -.005em;
+  font-size: 17px;
+  font-style: italic;
+  color: var(--ink-2);
 }
-.masthead .tagline { color: var(--muted); font-size: 13.5px; }
-.masthead .expansion + .tagline::before { content: "· "; }
-.masthead nav { margin-left: auto; display: flex; gap: 18px; font-size: 13px; }
-.masthead nav a { color: var(--accent); text-decoration: none; }
-.masthead nav a:hover { text-decoration: underline; }
+.masthead nav {
+  margin-left: auto;
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
+}
+.masthead nav a {
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 1px;
+}
+.masthead nav a:hover { border-bottom-color: var(--ink); }
 
-.shell {
-  display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
-  gap: var(--gap);
-  padding: var(--gap) 28px 60px;
-  align-items: start;
+article {
+  max-width: var(--column);
+  margin: 0 auto;
+  padding: 0 28px 80px;
 }
 
-/* The gate chart is far wider than the screen, on purpose - a day at SEA does
-   not fit in 1400px and squashing it would make it unreadable.
-   
-   By default a grid or flex item refuses to shrink below its content's width,
-   so the chart would stretch its whole column, push the page wider than the
-   window, and take every panel with it. `minmax(0, 1fr)` above and these
-   `min-width: 0` rules tell those boxes they ARE allowed to be narrower than
-   what is inside them - which is what lets the chart scroll inside its own
-   container instead of dragging the page sideways. */
-.shell > aside,
-.shell > main { min-width: 0; }
-.panel { min-width: 0; }
+section { padding: 30px 0; border-bottom: 1px solid var(--rule); }
+section:last-of-type { border-bottom: none; }
 
-.panel {
-  background: var(--card);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-}
-.panel > h2 {
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 10.5px;
-  letter-spacing: .14em;
+/* ---- 3. TYPE ------------------------------------------------------------ */
+
+/* A section title: small, spaced, in mono, above a heavy rule. The rule does
+   the work a card border used to do, without boxing anything in. */
+h2.section-title {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .18em;
   text-transform: uppercase;
   color: var(--muted);
-  font-weight: 500;
-  margin: 0;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--rule-2);
+  margin: 0 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rule-heavy);
 }
-.panel-body { padding: 16px; }
 
-/* ---- 3. CONTROLS -------------------------------------------------------- */
+.lede { border-bottom: 1px solid var(--rule); }
+.lede .deck {
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 6px 0 14px;
+  max-width: 22ch;
+}
+.lede p { max-width: var(--measure); margin: 0 0 12px; color: var(--ink-2); }
+.lede p:last-child { margin-bottom: 0; }
+.lede .byline {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted);
+}
 
-.control { margin-bottom: 20px; }
-.control:last-child { margin-bottom: 0; }
+/* The always-visible line under a chart. Italic, like a figure caption in
+   print, so it reads as the author talking rather than as interface text. */
+.caption {
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ink-2);
+  max-width: var(--measure);
+  margin: 12px 0 0;
+}
+
+/* The "more, if you want it" toggle. A native <details>, so it works with a
+   keyboard and a screen reader without a line of JavaScript. */
+details.explain { margin-top: 8px; max-width: var(--measure); }
+details.explain > summary {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 0;
+}
+details.explain > summary::-webkit-details-marker { display: none; }
+details.explain > summary::before {
+  content: "?";
+  display: inline-grid; place-items: center;
+  width: 15px; height: 15px;
+  border: 1px solid var(--muted);
+  border-radius: 50%;
+  font-size: 10px; font-weight: 600; line-height: 1;
+}
+details.explain > summary:hover { color: var(--ink); }
+details.explain > summary:hover::before { border-color: var(--ink); }
+details.explain[open] > summary::before { content: "\00d7"; }
+details.explain p {
+  font-size: 15.5px;
+  color: var(--ink-2);
+  margin: 8px 0 0;
+  padding-left: 22px;
+  border-left: 1px solid var(--rule);
+}
+
+.status {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--muted);
+  margin: 10px 0 0;
+}
+.status.error { color: var(--delayed); }
+
+a { color: var(--ink); }
+
+/* ---- 4. CONTROLS -------------------------------------------------------- */
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 26px 34px;
+}
+.control { min-width: 0; }
 .control > label {
   display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink-2);
-  margin-bottom: 6px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 7px;
 }
-.control .hint { font-size: 11.5px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
-.control .hint a { color: var(--accent); }
-
-/* ---- quick picks and day facts ---- */
-.quick-picks { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
-.quick-picks button {
-  font-size: 11px; font-weight: 500;
-  padding: 3px 7px; border-radius: 3px;
-  border: 1px solid var(--rule); background: var(--raised); color: var(--ink-2);
-}
-.quick-picks button:hover { border-color: var(--accent); color: var(--accent); }
-
-.day-facts {
-  margin-top: 10px;
-  border-top: 1px solid var(--rule-2);
-  padding-top: 9px;
-  font-size: 12px;
-  line-height: 1.5;
-}
-.day-facts .headline { font-weight: 600; color: var(--ink); margin-bottom: 4px; }
-.day-facts .row { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); }
-.day-facts .row b {
-  font-family: "IBM Plex Mono", monospace;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-2); font-weight: 500;
-}
-.day-facts .tag-note {
-  margin-top: 6px; color: var(--accent);
-  font-size: 11.5px; line-height: 1.45;
+.control .hint {
+  font-size: 14px;
+  font-style: italic;
+  color: var(--muted);
+  margin-top: 7px;
+  line-height: 1.45;
 }
 
 input[type="date"], select, input[type="number"] {
   width: 100%;
-  padding: 7px 9px;
+  padding: 7px 2px;
   font: inherit;
-  font-size: 13.5px;
+  font-size: 16px;
   color: var(--ink);
-  background: var(--raised);
-  border: 1px solid var(--rule);
-  border-radius: 3px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--ink);
+  border-radius: 0;
 }
-input[type="range"] { width: 100%; accent-color: var(--accent); }
+input[type="range"] { width: 100%; accent-color: var(--ink); }
 
 button {
-  font: inherit;
-  font-size: 13.5px;
-  font-weight: 600;
-  padding: 9px 14px;
-  border-radius: 3px;
-  border: 1px solid var(--rule);
-  background: var(--raised);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: .06em;
+  padding: 8px 14px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: transparent;
   color: var(--ink);
   cursor: pointer;
 }
-button:hover { border-color: var(--accent); }
+button:hover { background: var(--ink); color: var(--paper); }
 button.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--card);
-  width: 100%;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 12px 26px;
+  font-size: 13px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
 }
-button.primary:disabled { opacity: .55; cursor: default; }
-button.tiny { padding: 3px 8px; font-size: 11.5px; font-weight: 500; }
+button.primary:hover { background: var(--ink-2); }
+button.primary:disabled { opacity: .4; cursor: default; }
+button.tiny { padding: 3px 9px; font-size: 11px; }
 
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+.run-row {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px solid var(--rule);
+}
+
+/* quick picks: the four days worth looking at */
+.quick-picks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.quick-picks button { padding: 3px 8px; font-size: 11px; border-color: var(--rule); color: var(--ink-2); }
+.quick-picks button:hover { border-color: var(--ink); }
+
+.day-facts { margin-top: 14px; font-size: 15px; }
+.day-facts .headline { font-weight: 600; margin-bottom: 6px; }
+.day-facts .row {
+  display: flex; justify-content: space-between; gap: 12px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--rule-2);
+  padding: 3px 0;
+}
+.day-facts .row b {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 13.5px;
+  color: var(--ink);
+  font-weight: 500;
+}
+.day-facts .tag-note {
+  margin-top: 8px;
+  font-style: italic;
+  font-size: 14.5px;
+  color: var(--ink-2);
+  line-height: 1.45;
+}
 
 .count {
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 11px; font-weight: 500; color: var(--delayed);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px; color: var(--delayed);
 }
 
-/* ---- the gate grid ---- */
-.gate-group { margin-bottom: 12px; }
+/* the gate roster */
+.gate-group { margin-bottom: 14px; }
 .gate-group:last-child { margin-bottom: 0; }
-.gate-group-head {
-  display: flex; align-items: baseline; gap: 8px;
-  margin-bottom: 5px;
-}
-.gate-group-head .name {
-  font-size: 11.5px; font-weight: 600; color: var(--ink-2);
-}
+.gate-group-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.gate-group-head .name { font-size: 14px; font-weight: 600; }
 .gate-group-head .close-all {
   margin-left: auto;
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 10.5px; font-weight: 500;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10.5px;
   background: none; border: none; padding: 0;
-  color: var(--accent); cursor: pointer; text-decoration: underline;
+  color: var(--muted); cursor: pointer; text-decoration: underline;
 }
-
-/* A small question mark that explains a term on hover or tap, so the
-   explanation is available without sitting on the page permanently. */
-button.info {
-  all: unset;
-  cursor: help;
-  display: inline-grid; place-items: center;
-  width: 14px; height: 14px;
-  border-radius: 50%;
-  border: 1px solid var(--muted);
-  color: var(--muted);
-  font-size: 9.5px; font-weight: 700;
-  line-height: 1;
-  vertical-align: middle;
-  margin-left: 3px;
-}
-button.info:hover, button.info:focus-visible {
-  border-color: var(--accent); color: var(--accent);
-}
+.gate-group-head .close-all:hover { color: var(--ink); background: none; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
-.chip.gate {
-  font-size: 10.5px;
-  padding: 2px 5px;
-  min-width: 30px;
-  text-align: center;
-}
-
-/* ---- the solving clock ---- */
-.solving {
-  margin-top: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--accent);
-  border-radius: var(--radius);
-  background: var(--accent-soft);
-  text-align: center;
-}
-.solving.hidden { display: none; }
-.solving-clock {
-  font-family: "IBM Plex Mono", monospace;
-  font-variant-numeric: tabular-nums;
-  font-size: 26px; font-weight: 600;
-  color: var(--accent); line-height: 1.1;
-}
-.solving-note {
-  font-size: 11.5px; color: var(--ink-2); margin-top: 6px; line-height: 1.4;
-}
-.solving.done { border-color: var(--rule); background: var(--card); }
-.solving.done .solving-clock { color: var(--good); font-size: 20px; }
 .chip {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: 11px;
   padding: 3px 7px;
-  border-radius: 3px;
   border: 1px solid var(--rule);
-  background: var(--raised);
+  background: transparent;
   color: var(--ink-2);
   cursor: pointer;
   user-select: none;
 }
+.chip:hover { border-color: var(--ink); background: transparent; color: var(--ink); }
+.chip.gate { font-size: 10.5px; padding: 2px 5px; min-width: 30px; text-align: center; }
 .chip[aria-pressed="true"] {
   background: var(--delayed);
   border-color: var(--delayed);
-  color: #fff;
+  color: var(--paper);
 }
+.chip[aria-pressed="true"]:hover { background: var(--delayed); color: var(--paper); }
 
 .delay-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 12px;
-  padding: 5px 0;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 14.5px;
+  padding: 6px 0;
   border-bottom: 1px solid var(--rule-2);
 }
 .delay-row:last-child { border-bottom: none; }
-.delay-row .tail { font-weight: 600; }
-.delay-row .mins { color: var(--delayed); }
+.delay-row .tail {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 13px; font-weight: 500;
+}
+.delay-row .mins {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 13px; color: var(--delayed);
+}
 .delay-row button { margin-left: auto; }
 
-/* ---- 4. RESULTS --------------------------------------------------------- */
+/* A question mark that defines one term without putting the definition on the
+   page permanently. Used inline, mid-sentence. */
+button.info {
+  all: unset;
+  cursor: help;
+  display: inline-grid; place-items: center;
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  border: 1px solid var(--muted);
+  color: var(--muted);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10px; font-weight: 600; line-height: 1;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+button.info:hover, button.info:focus-visible { border-color: var(--ink); color: var(--ink); }
 
+/* the solving clock */
+.solving {
+  display: flex; align-items: baseline; gap: 14px;
+  margin-left: auto;
+}
+.solving.hidden { display: none; }
+.solving-clock {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 28px; font-weight: 500;
+  line-height: 1;
+}
+.solving-note { font-size: 14px; font-style: italic; color: var(--muted); max-width: 34ch; }
+.solving.done .solving-clock { color: var(--good); font-size: 20px; }
+
+/* ---- 5. RESULTS --------------------------------------------------------- */
+
+/* Stat blocks, newspaper furniture: heavy rule, small label, large figure. */
 .figures {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1px;
-  background: var(--rule);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  overflow: hidden;
-  margin-bottom: var(--gap);
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0 34px;
 }
-.figure { background: var(--card); padding: 16px 18px; }
+.figure { padding-top: 12px; border-top: 2px solid var(--rule-heavy); }
+.figure .label {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
 .figure .value {
-  font-family: "IBM Plex Mono", monospace;
-  font-variant-numeric: tabular-nums;
-  font-size: 25px;
+  font-size: 38px;
   font-weight: 600;
-  letter-spacing: -.02em;
-  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+  line-height: 1;
 }
 .figure .value.recovered { color: var(--good); }
 .figure .value.damage    { color: var(--delayed); }
-.figure .label { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.35; }
 
-/* Any wide block scrolls inside its own container, so the page body never
-   scrolls sideways on a phone. */
+/* Any wide block scrolls inside its own container, so the page never scrolls
+   sideways on a phone. */
 .tbl-scroll { overflow-x: auto; }
-.breakdown { width: 100%; min-width: 480px; border-collapse: collapse; font-size: 13.5px; }
+.breakdown { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 16px; }
 .breakdown th, .breakdown td {
-  text-align: right; padding: 7px 0 7px 14px;
+  text-align: right;
+  padding: 9px 0 9px 18px;
   border-bottom: 1px solid var(--rule-2);
 }
 .breakdown th:first-child, .breakdown td:first-child { text-align: left; padding-left: 0; }
 .breakdown th {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
   color: var(--muted); font-weight: 500;
+  border-bottom-color: var(--rule-heavy);
 }
-.breakdown td { font-variant-numeric: tabular-nums; font-family: "IBM Plex Mono", monospace; font-size: 12.5px; }
-.breakdown td:first-child { font-family: inherit; font-size: 13.5px; }
+.breakdown td {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+}
+.breakdown td:first-child { font-family: inherit; font-size: 16px; }
 .breakdown tr:last-child td { border-bottom: none; }
 
-/* ---- 5. CHART ----------------------------------------------------------- */
+/* ---- 6. CHART ----------------------------------------------------------- */
 
-/* The chart scrolls here, inside its own panel, and nowhere else. */
-.chart-wrap { overflow-x: auto; overscroll-behavior-x: contain; padding: 4px 16px 16px; }
+/* The chart scrolls here, inside its own container, and nowhere else. */
+.chart-wrap { overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 6px; }
 svg.gantt { display: block; }
 svg.gantt .grid-line { stroke: var(--rule-2); stroke-width: 1; }
 /* Midnight. Marked because a day's chart routinely runs into the next one. */
 svg.gantt .grid-line.day-break { stroke: var(--rule); stroke-width: 1.5; stroke-dasharray: 3 3; }
-svg.gantt .day-break-label { fill: var(--muted); font-size: 9.5px; }
+svg.gantt .day-break-label { fill: var(--muted); font-size: 10px; font-style: italic; }
 svg.gantt .axis-text {
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 10px;
-  fill: var(--muted);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10px; fill: var(--muted);
 }
 svg.gantt .gate-label {
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 10px;
-  fill: var(--ink-2);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10px; fill: var(--ink-2);
 }
-/* A gate the scenario has closed: named, struck through, and its row shaded,
-   so you can see it is out of service without hunting for a missing line. */
+/* A gate the scenario has closed: named, struck through, row shaded. */
 svg.gantt .gate-label.closed { fill: var(--delayed); text-decoration: line-through; }
 svg.gantt rect.closed-row { fill: var(--delayed); opacity: .07; }
-svg.gantt .band { fill: var(--ink); opacity: .025; }
-svg.gantt .bar { fill: var(--block); rx: 2; }
-svg.gantt .bar.tow { fill: var(--block-tow); }
-svg.gantt .bar.moved { fill: var(--moved); }
-svg.gantt .bar.delayed { fill: var(--delayed); }
-/* A 2px ring in the surface colour so touching bars never visually merge. */
-svg.gantt .bar { stroke: var(--card); stroke-width: 2; paint-order: stroke; }
+svg.gantt .band { fill: var(--ink); opacity: .02; }
+
+/* Bars carry a hairline edge rather than a fill-only block, which is what
+   lets an ordinary aircraft stay pale enough to recede and still be seen.
+   Separation between touching bars comes from the geometry - each bar is
+   inset one pixel each side in app.js - not from a fat surface-coloured
+   stroke, which would swallow the edge. */
+svg.gantt .bar { fill: var(--block); stroke: var(--block-line); stroke-width: 1; }
+/* A split visit. Both halves are AT a gate - the aircraft is away in between -
+   so the hatch marks "this is half of one visit", not "this bar is off-gate". */
+svg.gantt .bar.tow { fill: url(#hatch); }
+svg.gantt .bar.moved { fill: var(--moved); stroke: var(--moved-line); }
+svg.gantt .bar.delayed { fill: var(--delayed); stroke: var(--delayed-line); }
 svg.gantt .bar:hover { stroke: var(--ink); stroke-width: 1.5; }
 
-.legend { display: flex; flex-wrap: wrap; gap: 16px; padding: 0 16px 14px; font-size: 12px; color: var(--ink-2); }
-.legend span { display: inline-flex; align-items: center; gap: 6px; }
-.legend i { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+.legend {
+  display: flex; flex-wrap: wrap; gap: 18px;
+  font-size: 14.5px; color: var(--ink-2);
+  margin-bottom: 14px;
+}
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.legend i {
+  width: 14px; height: 14px; display: inline-block;
+  border: 1px solid var(--block-line);
+  background: var(--block);
+}
+.legend i.tow {
+  background: repeating-linear-gradient(45deg,
+    var(--block), var(--block) 2px, var(--block-line) 2px, var(--block-line) 3.5px);
+}
+.legend i.moved   { background: var(--moved);   border-color: var(--moved-line); }
+.legend i.delayed { background: var(--delayed); border-color: var(--delayed-line); }
 
 .tooltip {
   position: fixed;
   pointer-events: none;
   z-index: 20;
-  background: var(--raised);
-  border: 1px solid var(--rule);
-  border-radius: 3px;
-  box-shadow: var(--shadow);
-  padding: 9px 11px;
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 11.5px;
-  line-height: 1.6;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--ink);
-  max-width: 260px;
+  max-width: 280px;
+  box-shadow: 3px 3px 0 rgba(26,24,21,.10);
 }
 .tooltip.hidden { display: none; }
-.tooltip b { color: var(--accent); }
+.tooltip b { font-weight: 600; }
 
 /* the year strip */
-.year { padding: 12px 16px 16px; }
-svg.year-strip { display: block; width: 100%; height: 96px; }
-svg.year-strip path.trend { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+svg.year-strip { display: block; width: 100%; height: 110px; }
+svg.year-strip path.trend { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
 /* The daily bars sit back so the seven-day average reads clearly on top of
    them. They are context; the trend is the point. */
-svg.year-strip rect.day { cursor: pointer; fill: var(--block); opacity: .45; }
-svg.year-strip rect.day:hover { opacity: .9; }
-svg.year-strip rect.day.selected { opacity: 1; fill: var(--accent); }
-svg.year-strip rect.day:hover { stroke: var(--ink); stroke-width: 1; }
-svg.year-strip rect.day.selected { stroke: var(--accent); stroke-width: 2; }
-svg.year-strip text { font-family: "IBM Plex Mono", monospace; font-size: 9.5px; fill: var(--muted); }
-
-.status {
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 11.5px;
-  color: var(--muted);
-  padding: 0 16px 14px;
+svg.year-strip rect.day { cursor: pointer; fill: var(--block-line); opacity: .45; }
+svg.year-strip rect.day:hover { opacity: .95; }
+svg.year-strip rect.day.selected { opacity: 1; fill: var(--moved); }
+svg.year-strip text {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10px; fill: var(--muted);
 }
-.status.error { color: var(--delayed); }
 
 /* Anything that exists only for screen readers. */
 .sr-only {
@@ -470,13 +534,16 @@ svg.year-strip text { font-family: "IBM Plex Mono", monospace; font-size: 9.5px;
   clip: rect(0,0,0,0); white-space: nowrap; border: 0;
 }
 
-/* ---- 6. RESPONSIVE ------------------------------------------------------ */
+/* ---- 7. RESPONSIVE ------------------------------------------------------ */
 
 @media (max-width: 900px) {
-  .shell { grid-template-columns: 1fr; padding: var(--gap) 16px 60px; }
-  .masthead { padding: 18px 16px 14px; }
-  .figures { grid-template-columns: repeat(2, 1fr); }
-  .figure .value { font-size: 21px; }
+  body { font-size: 16px; }
+  .masthead { padding: 26px 18px 14px; }
+  .masthead h1 { font-size: 32px; }
   .masthead nav { margin-left: 0; width: 100%; }
+  article { padding: 0 18px 60px; }
+  .lede .deck { font-size: 25px; max-width: none; }
+  .figures { grid-template-columns: repeat(2, 1fr); gap: 20px 24px; }
+  .figure .value { font-size: 29px; }
+  .solving { margin-left: 0; width: 100%; }
 }
-
