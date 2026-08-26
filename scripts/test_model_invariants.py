@@ -142,6 +142,38 @@ def main():
               small["recovered_dollars"] <= small["disruption_cost"] + 0.01,
               "recovered %.2f of %.2f" % (small["recovered_dollars"], small["disruption_cost"]))
 
+        # 8. Re-planning must never be WORSE than doing nothing. The first
+        #    version of this file checked only that recovery was not
+        #    over-reported, which let a plan that cost MORE than the damage
+        #    through - reported on screen as recovering minus $21,010.
+        for closed in ([], ["C%d" % i for i in range(1, 28)]):
+            result = run(blocks, gates, date, delays={tails[0]: 60},
+                         closed=closed, baseline=base_solution)
+            if not result.get("feasible", True):
+                continue
+            label = "with %d gates closed" % len(closed)
+            check("re-planning is never worse than doing nothing " + label,
+                  result["recovery"]["total_cost"] <= result["damage"]["total_cost"] + 0.01,
+                  "recovery %.0f vs damage %.0f" % (result["recovery"]["total_cost"],
+                                                    result["damage"]["total_cost"]))
+            check("recovered dollars are never negative " + label,
+                  result["recovered_dollars"] >= -0.01,
+                  "recovered %.2f" % result["recovered_dollars"])
+
+        # 9. Closing MORE gates cannot reduce the damage. Nested closures, so
+        #    each scenario is strictly harder than the one before it.
+        ladder = []
+        allC = ["C%d" % i for i in range(1, 28)]
+        for size in (0, 3, 10, 27):
+            result = run(blocks, gates, date, delays={tails[0]: 60},
+                         closed=allC[:size], baseline=base_solution)
+            if result.get("feasible", True):
+                ladder.append((size, result["damage"]["total_cost"]))
+        monotone = all(ladder[i][1] <= ladder[i + 1][1] + 0.01 for i in range(len(ladder) - 1))
+        check("closing more gates never reduces the damage",
+              monotone,
+              " -> ".join("%d gates:%.0f" % (n, c) for n, c in ladder))
+
         if args.exact:
             exact_base = solver_ilp.solve(blocks, gates)
             check("integer program also matches the provable minimum",
