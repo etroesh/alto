@@ -36,6 +36,7 @@ DROP TABLE IF EXISTS turns;
 CREATE TABLE turns (
     turn_id                     INTEGER PRIMARY KEY,
     tail_number                 TEXT    NOT NULL,
+    turn_type                   TEXT    NOT NULL,   -- turnaround / arrival_only / departure_only
     arrival_date                TEXT    NOT NULL,   -- YYYY-MM-DD, the day it landed
     arrival_flight              INTEGER,
     departure_flight            INTEGER,

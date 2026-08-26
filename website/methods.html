@@ -116,9 +116,26 @@
   <tr><th>Rule</th><th>Reason</th><th class="num">Count</th></tr>
   <tr><td>Ground time under 20 minutes</td><td>Physically impossible for a 737; a bad time in the source</td><td class="num">5</td></tr>
   <tr><td>Gap over 36 hours</td><td>Too long to be one visit — the aircraft left on a flight not in our data</td><td class="num">2,071</td></tr>
-  <tr><td>No matching departure</td><td>Flew in and never flew out within the data</td><td class="num">103</td></tr>
+  <tr><td>No matching departure</td><td>Flew in and never flew out within the data — no longer discarded, see below</td><td class="num">—</td></tr>
 </table></div>
 <p>The 36-hour cutoff is supported by the tariff: the Port of Seattle charges $200 per 12-hour period for overnight parking and <b>$5,000</b> per 12-hour period beyond 24 hours. Aircraft do not sit.</p>
+
+<h3>Aircraft that only arrive, or only depart</h3>
+<p>Defining a turn as an arrival <em>paired with</em> a departure quietly deleted a whole category of gate use: the aircraft that ends its day in Seattle and the one that starts its day here. Neither has a pair, so neither existed in the turns table — yet both occupy a gate.</p>
+<div class="tbl-scroll"><table>
+  <tr><th>Counted against the raw files</th><th class="num">Rows</th></tr>
+  <tr><td>Arrivals into SEA</td><td class="num">77,526</td></tr>
+  <tr><td>Departures from SEA</td><td class="num">77,720</td></tr>
+  <tr><td>Paired turnarounds</td><td class="num">75,347</td></tr>
+  <tr><td>Arrivals with no departure</td><td class="num bad">2,179</td></tr>
+  <tr><td>Departures with no arrival</td><td class="num bad">2,373</td></tr>
+</table></div>
+<p>That is roughly <b>12.5 gate uses a day</b> the model could not see. It also explained something visible in the interface: the flight picker never offered anything that began or ended in Seattle, only aircraft passing through.</p>
+<p>These are now built as <b>arrival-only</b> and <b>departure-only</b> visits, and their length comes from the airport rather than from us. The Port of Seattle's tariff publishes separate maximum gate occupancies for exactly these two cases — <b>60 minutes</b> arrival-only and <b>75 minutes</b> departure-only for a 100–199 seat aircraft — so those are the numbers used.</p>
+<div class="callout">
+  <span class="tag">After the fix</span>
+  <p><b>79,899</b> visits and <b>108,050</b> occupancy blocks. Peak simultaneous stand demand per day: minimum 23, median 31, maximum 39 — no day pushed past the 73-stand roster. The three methods still agree on <b>16 of 16</b> days tested.</p>
+</div>
 
 <!-- 3 -->
 <h2 id="towing">3 · Where aircraft park</h2>

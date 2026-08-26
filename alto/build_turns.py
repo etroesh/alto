@@ -258,6 +258,7 @@ def pair_turns(arrivals, departures):
 
             turns.append({
                 "tail_number": tail,
+                "turn_type": "turnaround",
                 "arrival_flight": int(arrival.Flight_Number_Reporting_Airline),
                 "departure_flight": int(matched_departure.Flight_Number_Reporting_Airline),
                 "arrival_origin": arrival.Origin,
@@ -278,13 +279,74 @@ def pair_turns(arrivals, departures):
                     matched_departure.FlightDate, matched_departure.CRSDepTime, 0)),
             })
 
+    # --- aircraft that only arrive, or only depart -------------------------
+    # A turn needs both halves. But an aircraft that lands at SEA and is still
+    # there when our data ends, or takes off from SEA on the first flight we
+    # ever see it make, still needs a gate. Around 2,179 arrivals and 2,373
+    # departures a year are in this position - about 12 gate uses a day that
+    # an arrival-and-departure-only model silently ignores.
+    #
+    # The tariff has categories for exactly this. Its maximum gate occupancy
+    # schedule lists "arrival only" and "departure only" alongside turnaround,
+    # at 60 and 75 minutes for a 100-199 seat aircraft. So these are recorded
+    # as partial turns of exactly those lengths - the airport's numbers, not
+    # ours - and the solver treats them like any other gate demand.
+    claimed_departures = set()
+    for turn in turns:
+        claimed_departures.add((turn["tail_number"], turn["departure_minute"]))
+
+    claimed_arrivals = set()
+    for turn in turns:
+        claimed_arrivals.add((turn["tail_number"], turn["arrival_minute"]))
+
+    for arrival in arrivals.itertuples(index=False):
+        if (arrival.Tail_Number, int(arrival.event_minute)) in claimed_arrivals:
+            continue
+        turns.append(_partial_turn(arrival, "arrival_only"))
+
+    for departure in departures.itertuples(index=False):
+        if (departure.Tail_Number, int(departure.event_minute)) in claimed_departures:
+            continue
+        turns.append(_partial_turn(departure, "departure_only"))
+
     report = {
         "turns_built": len(turns),
         "dropped_too_short": dropped_too_short,
         "dropped_too_long": dropped_too_long,
         "dropped_no_departure": dropped_no_departure,
     }
-    return pd.DataFrame(turns), report
+    frame = pd.DataFrame(turns).sort_values("arrival_minute").reset_index(drop=True)
+    return frame, report
+
+
+def _partial_turn(event, kind):
+    """A gate visit where we only ever see one half of the aircraft's day."""
+    if kind == "arrival_only":
+        start = int(event.event_minute)
+        end = start + config.ARRIVAL_GATE_MINUTES
+        origin, destination = event.Origin, None
+    else:
+        end = int(event.event_minute)
+        start = end - config.DEPARTURE_GATE_MINUTES
+        origin, destination = None, event.Dest
+
+    flight = int(event.Flight_Number_Reporting_Airline)
+    return {
+        "tail_number": event.Tail_Number,
+        "turn_type": kind,
+        "arrival_flight": flight if kind == "arrival_only" else None,
+        "departure_flight": flight if kind == "departure_only" else None,
+        "arrival_origin": origin,
+        "departure_dest": destination,
+        "arrival_date": event.FlightDate.date().isoformat(),
+        "arrival_minute": start,
+        "departure_minute": end,
+        "ground_minutes": end - start,
+        "arrival_delay_minutes": nan_to_zero(getattr(event, "ArrDelayMinutes", 0)),
+        "departure_delay_minutes": nan_to_zero(getattr(event, "DepDelayMinutes", 0)),
+        "scheduled_arrival_minute": start,
+        "scheduled_departure_minute": end,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -335,12 +397,17 @@ def occupancy_intervals(turns, max_occupancy=None):
     for index, turn in enumerate(turns.itertuples(index=False)):
         if turn.ground_minutes <= max_occupancy:
             # Within the airport's limit. The aircraft holds its gate throughout.
+            block_type = "full"
+            if turn.turn_type == "arrival_only":
+                block_type = "arrival_only"
+            elif turn.turn_type == "departure_only":
+                block_type = "departure_only"
             blocks.append({
                 "turn_index": index,
                 "tail_number": turn.tail_number,
                 "start_minute": turn.arrival_minute,
                 "end_minute": turn.departure_minute,
-                "block_type": "full",
+                "block_type": block_type,
             })
             continue
 
