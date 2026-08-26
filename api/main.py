@@ -23,6 +23,7 @@ THE ENDPOINTS
     POST /api/optimize            a scenario in, damage and recovery out
 """
 
+import math
 import sys
 import time
 from pathlib import Path
@@ -243,6 +244,31 @@ def days():
     }
 
 
+# ---------------------------------------------------------------------------
+# Missing values, made safe for JSON
+# ---------------------------------------------------------------------------
+# An arrival-only visit has no departure flight, and a departure-only visit has
+# no arrival flight. pandas stores those gaps as NaN, and NaN is not legal JSON
+# - json.dumps writes the bare token NaN, which every browser refuses to parse.
+# So every field that can be missing goes through one of these two helpers on
+# the way out of the API, and comes out as a proper null.
+
+def _is_missing(value):
+    if value is None:
+        return True
+    return isinstance(value, float) and math.isnan(value)
+
+
+def _clean_text(value):
+    """A string field, or None if it was never there."""
+    return None if _is_missing(value) else value
+
+
+def _clean_number(value):
+    """A whole-number field, or None if it was never there."""
+    return None if _is_missing(value) else int(value)
+
+
 # ===========================================================================
 # BLOCK 3 - One day, optimally assigned
 # ===========================================================================
@@ -269,10 +295,10 @@ def day(date_string: str):
             "end": int(row["end_minute"]),
             "type": row["block_type"],
             "gate": assignment.get(position),
-            "from": row["arrival_origin"],
-            "to": row["departure_dest"],
-            "arrival_flight": int(row["arrival_flight"]),
-            "departure_flight": int(row["departure_flight"]),
+            "from": _clean_text(row["arrival_origin"]),
+            "to": _clean_text(row["departure_dest"]),
+            "arrival_flight": _clean_number(row["arrival_flight"]),
+            "departure_flight": _clean_number(row["departure_flight"]),
             "ground_minutes": int(row["ground_minutes"]),
         })
 
@@ -396,8 +422,8 @@ def optimize(request: ScenarioRequest):
             "gate": assignment.get(position),
             "was_at_gate": gate_before.get(block_id),
             "injected_delay": int(row.get("injected_delay", 0)),
-            "from": row.get("arrival_origin"),
-            "to": row.get("departure_dest"),
+            "from": _clean_text(row.get("arrival_origin")),
+            "to": _clean_text(row.get("departure_dest")),
         })
     result["blocks"] = drawable
     result["gates_available"] = len(scenarios.available_gates(

@@ -290,6 +290,17 @@ const ROW_HEIGHT = 15;
 const LABEL_WIDTH = 42;
 const TOP_MARGIN = 20;
 
+// An aircraft that ends its day in Seattle has no onward destination, and one
+// that starts its day here has no origin. Writing "? -> SEA -> ?" for those
+// looked like missing data when it is in fact the whole point of the visit, so
+// each case gets its own honest label.
+function routeLabel(from, to) {
+  if (from && to) return from + " \u2192 SEA \u2192 " + to;
+  if (from) return from + " \u2192 SEA  (stays)";
+  if (to) return "SEA \u2192 " + to + "  (first flight)";
+  return "SEA";
+}
+
 function drawGantt(blocks) {
   const svg = document.getElementById("gantt");
 
@@ -407,6 +418,8 @@ function drawGantt(blocks) {
       + ' data-start="' + block.start + '"'
       + ' data-end="' + block.end + '"'
       + ' data-type="' + block.type + '"'
+      + ' data-from="' + (block.from || "") + '"'
+      + ' data-to="' + (block.to || "") + '"'
       + ' data-delay="' + (block.injected_delay || 0) + '"></rect>';
   });
 
@@ -419,12 +432,14 @@ function drawGantt(blocks) {
     rect.addEventListener("mousemove", function (event) {
       const data = rect.dataset;
       let text = "<b>" + data.tail + "</b> · gate " + data.gate + "<br>"
-        + (data.from ? data.from + " \u2192 SEA \u2192 " + data.to + "<br>" : "")
+        + routeLabel(data.from, data.to) + "<br>"
         + clockFromAbsoluteMinutes(data.start) + " – " + clockFromAbsoluteMinutes(data.end)
         + " (" + (data.end - data.start) + " min)";
-      if (data.type !== "full") {
-        text += "<br>" + (data.type === "arrival" ? "arrival block, towed after" : "brought back to board");
-      }
+      // Four kinds of block, and each means something different on the chart.
+      if (data.type === "arrival") text += "<br>arrival block, towed after";
+      else if (data.type === "departure") text += "<br>brought back to board";
+      else if (data.type === "arrival_only") text += "<br>arrives and stays - no onward flight in the data";
+      else if (data.type === "departure_only") text += "<br>first flight of the day - no arrival in the data";
       if (data.was && data.was !== data.gate) text += "<br>moved from " + data.was;
       if (Number(data.delay) > 0) text += "<br>" + data.delay + " min late";
       showTooltip(event, text);
@@ -668,7 +683,7 @@ async function loadDay() {
     day.blocks.forEach(function (block) {
       if (seen[block.tail]) return;
       seen[block.tail] = true;
-      const route = (block.from || "?") + " \u2192 SEA \u2192 " + (block.to || "?");
+      const route = routeLabel(block.from, block.to);
       options.push({
         tail: block.tail,
         label: clockFromAbsoluteMinutes(block.start) + "  " + route + "  ·  " + block.tail,
@@ -733,7 +748,7 @@ function renderDelayList() {
 
   list.innerHTML = tails.map(function (tail) {
     const block = state.blocks.filter(function (b) { return b.tail === tail; })[0];
-    const route = block ? (block.from || "?") + "\u2192" + (block.to || "?") : "";
+    const route = block ? routeLabel(block.from, block.to) : "";
     return '<div class="delay-row"><span class="tail">' + tail + "</span>"
       + '<span style="color:var(--muted)">' + route + "</span>"
       + '<span class="mins">+' + state.delays[tail] + "</span>"
