@@ -526,12 +526,75 @@ function showFigures(result) {
   document.getElementById("breakdown-body").innerHTML = markup;
 }
 
+/* ---- THE VERDICT --------------------------------------------------------
+   Four figures and a seven-column table are the evidence; this is the answer.
+   Someone who does not read tables should still be able to leave the page
+   knowing what happened, so every run writes one plain sentence. */
+
+function setVerdict(html, isIdle) {
+  const panel = document.getElementById("verdict");
+  if (!panel) return;
+  panel.innerHTML = html;
+  panel.className = isIdle ? "verdict idle" : "verdict";
+}
+
+function verdictFor(result) {
+  const tails = Object.keys(state.delays);
+  const closed = state.closedGates.length;
+
+  // What did you actually do? Say that back first, so the number has a cause.
+  let cause;
+  if (tails.length === 1) {
+    cause = "Delaying <b>" + tails[0] + "</b> by <b>" + state.delays[tails[0]] + " minutes</b>";
+  } else if (tails.length > 1) {
+    cause = "Delaying <b>" + tails.length + " aircraft</b>";
+  } else if (closed > 0) {
+    cause = "Closing <b>" + closed + (closed === 1 ? " gate</b>" : " gates</b>");
+  } else {
+    cause = "This day, exactly as scheduled,";
+  }
+  if (tails.length > 0 && closed > 0) {
+    cause += " and closing <b>" + closed + (closed === 1 ? " gate</b>" : " gates</b>");
+  }
+
+  if (result.disruption_cost <= 0) {
+    return cause + " costs nothing extra — the schedule absorbs it without a single "
+      + "aircraft waiting for a gate.";
+  }
+
+  let text = cause + " costs <b>" + money(result.disruption_cost) + "</b>. "
+    + "Re-planning the whole day's gates gets <b class='up'>" + money(result.recovered_dollars)
+    + "</b> of it back — " + result.recovered_percent + "% — by moving <b>"
+    + result.aircraft_moved_count + "</b> aircraft to different gates";
+  text += result.solver === "integer program"
+    ? ", solved exactly in " + result.seconds + " seconds."
+    : ", in " + result.seconds + " seconds.";
+  return text;
+}
+
+/* A one-line summary of the scenario as it currently stands, so the button
+   never has to be pressed just to find out what is set. */
+function describeScenario() {
+  const tails = Object.keys(state.delays);
+  const closed = state.closedGates.length;
+  const parts = [];
+  if (tails.length === 1) parts.push("<b>" + tails[0] + "</b> " + state.delays[tails[0]] + " min late");
+  else if (tails.length > 1) parts.push("<b>" + tails.length + " aircraft</b> delayed");
+  if (closed > 0) parts.push("<b>" + closed + "</b> gate" + (closed === 1 ? "" : "s") + " closed");
+  const element = document.getElementById("scenario-now");
+  if (!element) return;
+  element.innerHTML = parts.length === 0
+    ? "Nothing changed yet — running now gives you the day as it was scheduled."
+    : parts.join(" · ") + " on " + state.date;
+}
+
 function clearFigures() {
   ["fig-disruption", "fig-recovered", "fig-share", "fig-moved"].forEach(function (id) {
     document.getElementById(id).textContent = "—";
   });
   document.getElementById("breakdown-body").innerHTML =
     '<tr><td colspan="7" style="color:var(--muted);text-align:left">Run a scenario to fill this in.</td></tr>';
+  setVerdict("Nothing broken yet. Delay an aircraft above, then press Run — it takes about a second.", true);
 }
 
 /* ---- 6. THE GATE GRID --------------------------------------------------- */
@@ -612,6 +675,7 @@ function drawGateGrid() {
   const count = state.closedGates.length;
   document.getElementById("closed-count").textContent =
     count === 0 ? "" : "· " + count + " closed of " + state.gates.length;
+  describeScenario();
 }
 
 /* ---- 7. THE SOLVING CLOCK ----------------------------------------------- */
@@ -726,6 +790,7 @@ async function runScenario() {
   const button = document.getElementById("run");
   button.disabled = true;
   button.textContent = "Solving…";
+  setVerdict("Working — re-solving the whole day's gate plan…", true);
   startClock(state.useExactSolver);
   setStatus("chart-status", "Running the scenario…");
 
@@ -736,8 +801,14 @@ async function runScenario() {
     const result = await postJson("/api/optimize", currentScenario());
 
     showFigures(result);
+    setVerdict(verdictFor(result), false);
     state.blocks = result.blocks;
     drawGantt(result.blocks);
+
+    // Bring the answer to the reader rather than leaving four numbers to change
+    // quietly somewhere below the fold.
+    const results = document.getElementById("results");
+    if (results) results.scrollIntoView({ behavior: "smooth", block: "start" });
 
     setStatus("chart-status",
       "Solved with the " + result.solver + " in " + result.seconds + "s · "
@@ -749,16 +820,18 @@ async function runScenario() {
       + result.recovered_percent + " percent of the disruption recovered.");
   } catch (error) {
     setStatus("chart-status", "That scenario could not be solved: " + error.message, true);
+    setVerdict("That scenario could not be solved: " + error.message, true);
     failClock("Could not solve that scenario. See the message under the chart.");
   } finally {
     button.disabled = false;
-    button.textContent = "Run scenario";
+    button.textContent = "Run again";
   }
 }
 
 function renderDelayList() {
   const list = document.getElementById("delay-list");
   const tails = Object.keys(state.delays);
+  describeScenario();
   if (tails.length === 0) { list.innerHTML = ""; return; }
 
   list.innerHTML = tails.map(function (tail) {

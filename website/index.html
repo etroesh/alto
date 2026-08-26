@@ -29,153 +29,174 @@
     <p class="byline">Alaska Airlines · Seattle&#8209;Tacoma · every day of 2023</p>
     <h2 class="deck">What one late aircraft costs, and how much of it you can get back</h2>
     <p>Alaska runs roughly 220 aircraft through Seattle on an ordinary day, and every one of them needs a gate. When a flight arrives late, the gate it was going to use is still occupied — so the aircraft behind it waits, and the delay spreads.</p>
-    <p>ALTO takes a real day, lets you break it, and prices the damage. Then it re-solves the whole day's gate plan from scratch and shows how much of that damage careful reassignment recovers. Pick a day below, delay an aircraft or close a gate, and run it.</p>
+    <p>ALTO takes a real day, lets you break it, and prices the damage. Then it re-solves the whole day's gate plan from scratch and shows how much of that damage careful reassignment recovers.</p>
   </section>
 
-  <!-- ===================== The year ===================== -->
-  <section>
-    <h2 class="section-title">The year · aircraft visits per day</h2>
-    <svg class="year-strip" id="year-strip" role="img" aria-label="Aircraft visits on each day of 2023"></svg>
-    <p class="caption">Each thin bar is one day of 2023; the dark line is the seven-day average. Click any bar to load that day. Summer is the busy season — the peak is August, not the holidays.</p>
-    <details class="explain">
-      <summary>Why the holidays are not the peak</summary>
-      <p>Thanksgiving weekend sets passenger records, but a gate is taken by an <em>aircraft</em>, not by the people in it. Holiday peaks are fuller aeroplanes; summer peaks are more aeroplanes. Alaska schedules its heaviest flying in late July and August, which is what this chart shows — and Thanksgiving Day itself is the quietest day of the year here.</p>
-    </details>
-    <p class="status" id="year-status">Loading the year…</p>
-  </section>
+  <!-- ===================== 1 · Pick a day ===================== -->
+  <section class="step">
+    <div class="step-head"><span class="step-num">1</span><h2>Pick a day</h2></div>
+    <p class="step-sub">Every bar is one real day of 2023. Click one — the tall stretch through July and August is the summer peak.</p>
 
-  <!-- ===================== The controls ===================== -->
-  <section>
-    <h2 class="section-title">Set up a scenario</h2>
-    <div class="controls">
+    <div class="step-body">
+      <svg class="year-strip" id="year-strip" role="img" aria-label="Aircraft visits on each day of 2023"></svg>
+      <p class="status" id="year-status">Loading the year…</p>
 
-      <div class="control">
-        <label for="date-input">The day</label>
-        <input type="date" id="date-input" value="2023-07-15" min="2023-01-01" max="2023-12-31">
-        <div class="quick-picks" id="quick-picks"></div>
+      <div class="day-picker">
+        <div class="control">
+          <label for="date-input">Or type a date</label>
+          <input type="date" id="date-input" value="2023-07-15" min="2023-01-01" max="2023-12-31">
+          <div class="quick-picks" id="quick-picks"></div>
+        </div>
         <div class="day-facts" id="day-facts"></div>
       </div>
 
-      <div class="control">
-        <label for="tail-select">Delay an aircraft</label>
-        <select id="tail-select"><option>Pick a day first</option></select>
-        <div style="display:flex; gap:10px; align-items:center; margin-top:10px">
-          <input type="number" id="delay-minutes" value="60" min="1" max="600" step="5" style="width:70px">
-          <span class="hint" style="margin:0">minutes late</span>
-          <button class="tiny" id="add-delay" style="margin-left:auto">Add</button>
+      <details class="explain">
+        <summary>Why the holidays are not the peak</summary>
+        <p>Thanksgiving weekend sets passenger records, but a gate is taken by an <em>aircraft</em>, not by the people in it. Holiday peaks are fuller aeroplanes; summer peaks are more aeroplanes. Alaska schedules its heaviest flying in late July and August, which is what this chart shows — and Thanksgiving Day itself is the quietest day of the year here.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ===================== 2 · Break something ===================== -->
+  <section class="step">
+    <div class="step-head"><span class="step-num">2</span><h2>Break something</h2></div>
+    <p class="step-sub">Delay an aircraft, take a stand out of service, or argue with the cost assumptions. Nothing here is destructive — run it as many times as you like.</p>
+
+    <div class="step-body">
+      <div class="panel">
+        <div class="controls">
+
+          <div class="control">
+            <label for="tail-select">Delay an aircraft</label>
+            <select id="tail-select"><option>Pick a day first</option></select>
+            <div style="display:flex; gap:10px; align-items:center; margin-top:10px">
+              <input type="number" id="delay-minutes" value="60" min="1" max="600" step="5" style="width:70px">
+              <span class="hint" style="margin:0">minutes late</span>
+              <button class="tiny" id="add-delay" style="margin-left:auto">Add</button>
+            </div>
+            <div id="delay-list"></div>
+            <p class="hint">Every aircraft listed is a real Alaska tail number flying its real schedule that day.</p>
+          </div>
+
+          <div class="control">
+            <label for="delay-cost">Delay cost — <span id="delay-cost-value">$98.41</span> a minute</label>
+            <input type="range" id="delay-cost" min="40" max="200" step="1" value="98">
+            <p class="hint">Airlines for America put the cost of a minute of delay at $98.41 in 2025. Move it if you disagree.</p>
+          </div>
+
+          <div class="control">
+            <label for="propagation">Delay propagation — <span id="propagation-value">0.75</span>
+              <button class="info" type="button" aria-label="What is delay propagation?"
+                data-info="A share, not a count. If an aircraft lands 30 minutes late into a turn with 20 minutes of slack, 10 minutes are left over — and 0.75 of that, so 7.5 minutes, pushes into its next departure. Crews recover the rest on the ground. There is no published figure for this, which is why it is a slider.">?</button>
+            </label>
+            <input type="range" id="propagation" min="0" max="1" step="0.05" value="0.75">
+            <p class="hint">How much lateness carries to the aircraft's next flight. An assumption, not a published figure — which is why you can move it.</p>
+          </div>
+
+          <div class="control">
+            <label>Solver</label>
+            <label class="checkline">
+              <input type="checkbox" id="exact-solver">
+              Solve exactly
+            </label>
+            <p class="hint">The integer program instead of the network flow: about 20 seconds instead of 1, for 9% less passenger walking. Identical gate count — <a href="methods.html#validation">proven on 16 days</a>.</p>
+          </div>
+
+          <div class="control wide">
+            <label>Close gates <span id="closed-count" class="count"></span></label>
+            <!-- Filled in by app.js from the real gate roster, so this can never
+                 drift out of step with what the model actually has. -->
+            <div id="gate-groups"></div>
+            <p class="hint">Alaska rents C, N and D. The S stands are common&#8209;use — billed $552.89 every turn they are used, so the optimizer only reaches for them when it must.</p>
+          </div>
+
         </div>
-        <div id="delay-list"></div>
-        <p class="hint">Every aircraft listed is a real Alaska tail number flying its real schedule that day.</p>
       </div>
 
-      <div class="control">
-        <label>Close gates <span id="closed-count" class="count"></span></label>
-        <!-- Filled in by app.js from the real gate roster, so this can never
-             drift out of step with what the model actually has. -->
-        <div id="gate-groups"></div>
-        <p class="hint">Alaska rents C, N and D. The S stands are common&#8209;use — billed $552.89 every turn they are used, so the optimizer only reaches for them when it must.</p>
-      </div>
-
-      <div class="control">
-        <label for="delay-cost">Delay cost — <span id="delay-cost-value">$98.41</span> a minute</label>
-        <input type="range" id="delay-cost" min="40" max="200" step="1" value="98">
-        <p class="hint">Airlines for America put the cost of a minute of delay at $98.41 in 2025. Move it if you disagree.</p>
-      </div>
-
-      <div class="control">
-        <label for="propagation">Delay propagation — <span id="propagation-value">0.75</span>
-          <button class="info" type="button" aria-label="What is delay propagation?"
-            data-info="A share, not a count. If an aircraft lands 30 minutes late into a turn with 20 minutes of slack, 10 minutes are left over — and 0.75 of that, so 7.5 minutes, pushes into its next departure. Crews recover the rest on the ground. There is no published figure for this, which is why it is a slider.">?</button>
-        </label>
-        <input type="range" id="propagation" min="0" max="1" step="0.05" value="0.75">
-        <p class="hint">How much lateness carries to the aircraft's next flight. An assumption, not a published figure — which is why you can move it.</p>
-      </div>
-
-      <div class="control">
-        <label>Solver</label>
-        <label style="display:flex; align-items:center; gap:9px; font:inherit; font-size:16px; letter-spacing:0; text-transform:none; color:var(--ink); margin:0">
-          <input type="checkbox" id="exact-solver" style="width:auto">
-          Solve exactly
-        </label>
-        <p class="hint">The integer program instead of the network flow: about 20 seconds instead of 1, for 9% less passenger walking. Identical gate count — <a href="methods.html#validation">proven on 16 days</a>.</p>
-      </div>
-
-    </div>
-
-    <div class="run-row">
-      <button class="primary" id="run">Run scenario</button>
-      <div class="solving hidden" id="solving" role="status" aria-live="polite">
-        <div class="solving-clock" id="solving-clock">0.0s</div>
-        <div class="solving-note" id="solving-note">Working — leave the controls alone until this finishes.</div>
+      <!-- Follows you down the page, so the button that does the thing is never
+           somewhere else from the controls that set it up. -->
+      <div class="actionbar">
+        <button class="primary" id="run">Run scenario</button>
+        <span class="now" id="scenario-now">Nothing changed yet — running now gives you the day as it was scheduled.</span>
+        <div class="solving hidden" id="solving" role="status" aria-live="polite">
+          <div class="solving-clock" id="solving-clock">0.0s</div>
+          <div class="solving-note" id="solving-note">Working — leave the controls alone until this finishes.</div>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- ===================== The money ===================== -->
-  <section>
-    <h2 class="section-title">What it costs</h2>
+  <!-- ===================== 3 · What it cost ===================== -->
+  <section class="step" id="results">
+    <div class="step-head"><span class="step-num">3</span><h2>See what it cost</h2></div>
+    <p class="step-sub">Three runs of the same day: as scheduled, after your disruption with nobody reacting, and after the whole gate plan is re-solved around it. The gap between the second and the third is what the model is worth.</p>
 
-    <div class="figures" id="figures">
-      <div class="figure"><div class="label">Cost of the disruption</div><div class="value" id="fig-disruption">—</div></div>
-      <div class="figure"><div class="label">Recovered by re&#8209;optimizing</div><div class="value recovered" id="fig-recovered">—</div></div>
-      <div class="figure"><div class="label">Share of the damage recovered</div><div class="value" id="fig-share">—</div></div>
-      <div class="figure"><div class="label">Aircraft moved to a new gate</div><div class="value" id="fig-moved">—</div></div>
-    </div>
+    <div class="step-body">
+      <p class="verdict idle" id="verdict">Nothing broken yet. Delay an aircraft above, then press Run — it takes about a second.</p>
 
-    <p class="caption">Three runs of the same day: as scheduled, after your disruption with nobody reacting, and after the whole gate plan is re-solved around it. The gap between the second and the third is what the model is worth.</p>
-    <details class="explain">
-      <summary>Where these numbers come from</summary>
-      <p>Delay is priced at the rate in the slider above. Idle gate time is priced at what a common-use turn costs per minute. Towing is $100 a movement, and a common-use stand is $552.89 a turn. Nothing here is a passenger-experience estimate — only charges an airline actually pays, which makes every figure a floor rather than a guess.</p>
-    </details>
+      <div class="figures" id="figures">
+        <div class="figure"><div class="label">Cost of the disruption</div><div class="value" id="fig-disruption">—</div></div>
+        <div class="figure"><div class="label">Recovered by re&#8209;optimizing</div><div class="value recovered" id="fig-recovered">—</div></div>
+        <div class="figure"><div class="label">Share of the damage recovered</div><div class="value" id="fig-share">—</div></div>
+        <div class="figure"><div class="label">Aircraft moved to a new gate</div><div class="value" id="fig-moved">—</div></div>
+      </div>
 
-    <div class="tbl-scroll" style="margin-top:22px">
-      <!-- Seven columns of figures will not fit a phone. The wrapper lets the
-           table scroll inside itself rather than pushing the whole page
-           sideways. -->
-      <table class="breakdown" id="breakdown">
-        <thead>
-          <tr>
-            <th>Scenario</th>
-            <th>Delay</th>
-            <th>Idle gates</th>
-            <th>Towing</th>
-            <th>Common use</th>
-            <th>Total</th>
-            <th>Gates</th>
-          </tr>
-        </thead>
-        <tbody id="breakdown-body">
-          <tr><td colspan="7" style="color:var(--muted);text-align:left">Run a scenario to fill this in.</td></tr>
-        </tbody>
-      </table>
+      <details class="explain">
+        <summary>Where these numbers come from</summary>
+        <p>Delay is priced at the rate in the slider above. Idle gate time is priced at what a common-use turn costs per minute. Towing is $100 a movement, and a common-use stand is $552.89 a turn. Nothing here is a passenger-experience estimate — only charges an airline actually pays, which makes every figure a floor rather than a guess.</p>
+      </details>
+
+      <div class="tbl-scroll" style="margin-top:24px">
+        <!-- Seven columns of figures will not fit a phone. The wrapper lets the
+             table scroll inside itself rather than pushing the whole page
+             sideways. -->
+        <table class="breakdown" id="breakdown">
+          <thead>
+            <tr>
+              <th>Scenario</th>
+              <th>Delay</th>
+              <th>Idle gates</th>
+              <th>Towing</th>
+              <th>Common use</th>
+              <th>Total</th>
+              <th>Gates</th>
+            </tr>
+          </thead>
+          <tbody id="breakdown-body">
+            <tr><td colspan="7" style="color:var(--muted);text-align:left">Run a scenario to fill this in.</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </section>
 
-  <!-- ===================== The chart ===================== -->
-  <section>
-    <h2 class="section-title" id="chart-title">Gate occupancy</h2>
+  <!-- ===================== 4 · The gates ===================== -->
+  <section class="step">
+    <div class="step-head"><span class="step-num">4</span><h2 id="chart-title">The day, gate by gate</h2></div>
+    <p class="step-sub">One row per gate, time running left to right. Each bar is one aircraft holding one gate — hover any of them for the tail number and where it is going.</p>
 
-    <div class="legend">
-      <span><i></i> at gate</span>
-      <span><i class="tow"></i> half of a split visit
-        <button class="info" type="button" aria-label="What is a split visit?"
-          data-info="Seattle-Tacoma publishes a maximum gate occupancy of 120 minutes for an aircraft this size, and charges a rising fee past it. So an aircraft with a long wait ahead of it is towed to a remote stand and brought back to board. Both hatched bars are AT a gate; the aircraft is away in the gap between them.">?</button>
-      </span>
-      <span><i class="moved"></i> moved to a different gate</span>
-      <span><i class="delayed"></i> running late</span>
+    <div class="step-body">
+      <div class="legend">
+        <span><i></i> at gate</span>
+        <span><i class="tow"></i> half of a split visit
+          <button class="info" type="button" aria-label="What is a split visit?"
+            data-info="Seattle-Tacoma publishes a maximum gate occupancy of 120 minutes for an aircraft this size, and charges a rising fee past it. So an aircraft with a long wait ahead of it is towed to a remote stand and brought back to board. Both hatched bars are AT a gate; the aircraft is away in the gap between them.">?</button>
+        </span>
+        <span><i class="moved"></i> moved to a different gate</span>
+        <span><i class="delayed"></i> running late</span>
+      </div>
+
+      <div class="chart-wrap">
+        <svg class="gantt" id="gantt" role="img" aria-labelledby="chart-title"></svg>
+      </div>
+      <p class="status" id="chart-status">Loading…</p>
+
+      <details class="explain">
+        <summary>How to read this, and why it runs past midnight</summary>
+        <p>Read a row across to see one gate's whole day: back-to-back bars mean a hard-worked gate, gaps mean idle time you are paying for. Read a column down to see how much of the airport is in use at once — the tallest column is the day's peak, and that number is what decides how many gates Alaska needs.</p>
+        <p>The chart runs into the following morning on purpose. An aircraft that lands at 11pm and departs at 6am is one continuous gate visit, and cutting it at midnight would hide half of it. About 16,870 visits in 2023 cross midnight this way.</p>
+      </details>
     </div>
-
-    <div class="chart-wrap">
-      <svg class="gantt" id="gantt" role="img" aria-labelledby="chart-title"></svg>
-    </div>
-
-    <p class="caption">One row per gate, time running left to right. Each bar is one aircraft holding one gate — the longer the bar, the longer it sits. Hover any bar for the tail number and where it is going.</p>
-    <details class="explain">
-      <summary>How to read this, and why it runs past midnight</summary>
-      <p>Read a row across to see one gate's whole day: back-to-back bars mean a hard-worked gate, gaps mean idle time you are paying for. Read a column down to see how much of the airport is in use at once — the tallest column is the day's peak, and that number is what decides how many gates Alaska needs.</p>
-      <p>The chart runs into the following morning on purpose. An aircraft that lands at 11pm and departs at 6am is one continuous gate visit, and cutting it at midnight would hide half of it. About 16,870 visits in 2023 cross midnight this way.</p>
-    </details>
-    <p class="status" id="chart-status">Loading…</p>
   </section>
 
   <p class="sr-only" id="live-region" role="status" aria-live="polite"></p>

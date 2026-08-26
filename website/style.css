@@ -112,8 +112,81 @@ article {
   padding: 0 28px 80px;
 }
 
-section { padding: 30px 0; border-bottom: 1px solid var(--rule); }
+section { padding: 34px 0; border-bottom: 1px solid var(--rule); }
 section:last-of-type { border-bottom: none; }
+
+/* ---- the numbered spine -------------------------------------------------
+   The page is a tool, and a tool has to say where to start. Four numbered
+   steps do that in a way a row of equal-weight hairlines never could. The
+   number is a filled square so it reads as a marker rather than as text. */
+
+.step-head { display: flex; align-items: center; gap: 16px; margin-bottom: 6px; }
+.step-num {
+  flex: none;
+  width: 30px; height: 30px;
+  display: grid; place-items: center;
+  background: var(--ink); color: var(--paper);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 13px; letter-spacing: .06em;
+}
+.step-head h2 { margin: 0; font-size: 30px; }
+.step-sub {
+  font-style: italic; color: var(--muted);
+  margin: 0 0 22px 46px; max-width: 64ch;
+}
+/* Everything under a step is indented to clear the number, so the numbers
+   form a visible column down the left of the page. */
+.step-body { margin-left: 46px; }
+
+/* ---- the scenario panel -------------------------------------------------
+   One bounded region on slightly different paper. That is the plainest way a
+   page can say "this part is the machine" without going back to cards. */
+.panel {
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  padding: 26px 28px;
+}
+
+/* ---- the action bar -----------------------------------------------------
+   Sticky, so the button that does the thing is never scrolled away from the
+   controls that set it up. */
+.actionbar {
+  position: sticky; bottom: 0; z-index: 30;
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  margin-top: 22px; padding: 16px 0;
+  background: var(--paper);
+  border-top: 2px solid var(--ink);
+  /* It floats over the panel as you scroll, so it needs to cast a shadow -
+     otherwise it reads as a hole punched in the page rather than a bar. */
+  box-shadow: 0 -10px 20px -14px rgba(26, 24, 21, .55);
+}
+.actionbar .now { font-size: 15.5px; color: var(--ink-2); max-width: 46ch; }
+.actionbar .now b { font-weight: 600; }
+
+/* ---- the verdict --------------------------------------------------------
+   The single most useful thing on the page for someone who does not read
+   tables: one sentence, in plain English, saying what just happened. */
+.verdict {
+  font-size: 21px; line-height: 1.5;
+  max-width: 62ch; margin: 0 0 26px;
+  padding-left: 18px; border-left: 3px solid var(--ink);
+}
+.verdict b { font-weight: 600; }
+.verdict .up { color: var(--good); }
+.verdict.idle { border-left-color: var(--rule); color: var(--muted); font-style: italic; }
+
+/* the day picker sitting under the year chart */
+.day-picker {
+  display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  gap: 22px 40px; align-items: start;
+  margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--rule);
+}
+label.checkline {
+  display: flex; align-items: center; gap: 9px;
+  font: inherit; font-size: 16px; letter-spacing: 0; text-transform: none;
+  color: var(--ink); margin: 0;
+}
+label.checkline input { width: auto; }
 
 /* ---- 3. TYPE ------------------------------------------------------------ */
 
@@ -211,6 +284,17 @@ a { color: var(--ink); }
   gap: 26px 34px;
 }
 .control { min-width: 0; }
+/* The gate roster is 73 buttons tall and would leave every neighbouring column
+   half empty, so it takes a row of its own at the bottom of the panel. */
+.control.wide { grid-column: 1 / -1; border-top: 1px solid var(--rule); padding-top: 22px; }
+.control.wide #gate-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px 30px; }
+/* A checkbox and its words are a sentence, not a field label. */
+.control > label.checkline {
+  display: flex; align-items: center; gap: 9px;
+  font-family: inherit; font-size: 16px; letter-spacing: 0; text-transform: none;
+  color: var(--ink); margin: 0;
+}
+.control > label.checkline input { width: auto; }
 .control > label {
   display: block;
   font-family: "IBM Plex Mono", ui-monospace, monospace;
@@ -267,15 +351,7 @@ button.tiny { padding: 3px 9px; font-size: 11px; }
 
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
-.run-row {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  flex-wrap: wrap;
-  margin-top: 26px;
-  padding-top: 22px;
-  border-top: 1px solid var(--rule);
-}
+
 
 /* quick picks: the four days worth looking at */
 .quick-picks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
@@ -381,7 +457,7 @@ button.info:hover, button.info:focus-visible { border-color: var(--ink); color: 
 /* the solving clock */
 .solving {
   display: flex; align-items: baseline; gap: 14px;
-  margin-left: auto;
+  margin-left: auto; text-align: right;
 }
 .solving.hidden { display: none; }
 .solving-clock {
@@ -478,7 +554,8 @@ svg.gantt .bar { fill: var(--block); stroke: var(--block-line); stroke-width: 1;
 svg.gantt .bar.tow { fill: url(#hatch); }
 svg.gantt .bar.moved { fill: var(--moved); stroke: var(--moved-line); }
 svg.gantt .bar.delayed { fill: var(--delayed); stroke: var(--delayed-line); }
-svg.gantt .bar:hover { stroke: var(--ink); stroke-width: 1.5; }
+svg.gantt .bar { cursor: pointer; }
+svg.gantt .bar:hover { stroke: var(--ink); stroke-width: 2; }
 
 .legend {
   display: flex; flex-wrap: wrap; gap: 18px;
@@ -515,7 +592,7 @@ svg.gantt .bar:hover { stroke: var(--ink); stroke-width: 1.5; }
 .tooltip b { font-weight: 600; }
 
 /* the year strip */
-svg.year-strip { display: block; width: 100%; height: 110px; }
+svg.year-strip { display: block; width: 100%; height: 110px; cursor: crosshair; }
 svg.year-strip path.trend { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
 /* The daily bars sit back so the seven-day average reads clearly on top of
    them. They are context; the trend is the point. */
@@ -545,5 +622,11 @@ svg.year-strip text {
   .lede .deck { font-size: 25px; max-width: none; }
   .figures { grid-template-columns: repeat(2, 1fr); gap: 20px 24px; }
   .figure .value { font-size: 29px; }
-  .solving { margin-left: 0; width: 100%; }
+  .solving { margin-left: 0; width: 100%; text-align: left; }
+  .step-head h2 { font-size: 24px; }
+  .step-body, .step-sub { margin-left: 0; }
+  .panel { padding: 20px 18px; }
+  .day-picker { grid-template-columns: 1fr; }
+  .verdict { font-size: 18px; }
+  .actionbar { gap: 12px; }
 }
