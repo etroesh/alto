@@ -155,16 +155,53 @@ def _release_memory_to_os():
         pass
 
 
+def _own_cgroup_directory():
+    """Where this process's own cgroup limits live on disk.
+
+    THE MISTAKE THIS EXISTS TO CORRECT
+    ----------------------------------
+    The first version read /sys/fs/cgroup/memory.high directly and always got
+    the fallback. That path is the limit of the cgroup ROOT, which is "max" -
+    the root is unlimited by definition. A systemd service's own limits sit
+    further down, at /sys/fs/cgroup/system.slice/alto-api.service/memory.high.
+
+    /proc/self/cgroup names the path. Under cgroup v2 it is a single line:
+
+        0::/system.slice/alto-api.service
+
+    So the directory is /sys/fs/cgroup + that suffix. It was caught because
+    /api/health reported the fallback figure on a machine that definitely has
+    a limit set - which is exactly why the budget is reported there.
+    """
+    try:
+        with open("/proc/self/cgroup") as cgroup_file:
+            for line in cgroup_file:
+                parts = line.strip().split(":", 2)
+                if len(parts) == 3 and parts[0] == "0":       # "0" means cgroup v2
+                    return "/sys/fs/cgroup" + parts[2]
+    except OSError:
+        pass
+    return None
+
+
 def _memory_budget_mb():
     """How much memory the caches are allowed to hold, in megabytes.
 
     Read from the service's own cgroup rather than from a number typed into
     this file, so the cache can never again be configured to grow past the
     limit systemd will enforce on it. cgroup v2 exposes MemoryHigh as
-    memory.high; the value is bytes, or the literal string "max" when no limit
-    is set. Anything unreadable falls back to the constant above.
+    memory.high and MemoryMax as memory.max; each is a byte count, or the
+    literal "max" when unset. Anything unreadable falls back to the constant
+    above, which is deliberately below what the unit file sets.
     """
-    for path in ("/sys/fs/cgroup/memory.high", "/sys/fs/cgroup/memory.max"):
+    directory = _own_cgroup_directory()
+    candidates = []
+    if directory:
+        candidates += [directory + "/memory.high", directory + "/memory.max"]
+    # A container may put the limits at the root instead; try there too.
+    candidates += ["/sys/fs/cgroup/memory.high", "/sys/fs/cgroup/memory.max"]
+
+    for path in candidates:
         try:
             with open(path) as limit_file:
                 raw = limit_file.read().strip()
@@ -173,6 +210,26 @@ def _memory_budget_mb():
         except (OSError, ValueError):
             continue
     return FALLBACK_MEMORY_BUDGET_MB
+
+
+def _memory_budget_source():
+    """Whether the budget came from the real cgroup limit or from the fallback.
+
+    Reported on /api/health so "is the ceiling actually being read?" is a
+    question that can be answered from outside the machine. It could not be,
+    the first time, and that is how the bug above survived a deploy.
+    """
+    directory = _own_cgroup_directory()
+    for path in ([directory + "/memory.high", directory + "/memory.max"] if directory else []) \
+            + ["/sys/fs/cgroup/memory.high", "/sys/fs/cgroup/memory.max"]:
+        try:
+            with open(path) as limit_file:
+                raw = limit_file.read().strip()
+            if raw and raw != "max":
+                return path
+        except (OSError, ValueError):
+            continue
+    return "fallback (no cgroup limit readable)"
 
 
 def _trim_to_memory_budget():
@@ -287,6 +344,7 @@ def health():
         "cache_limit": MAX_CACHED_DAYS,
         "resident_memory_mb": _resident_memory_mb(),
         "memory_budget_mb": round(_memory_budget_mb(), 1),
+        "memory_budget_from": _memory_budget_source(),
     }
 
 
