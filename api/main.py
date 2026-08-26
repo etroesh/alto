@@ -23,8 +23,10 @@ THE ENDPOINTS
     POST /api/optimize            a scenario in, damage and recovery out
 """
 
+import contextlib
 import math
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -93,13 +95,44 @@ import ctypes
 import gc
 from collections import OrderedDict
 
-# Eight days is about 260 MB total resident. Raise it only on a machine with
-# memory to spare, and re-measure if you do.
-MAX_CACHED_DAYS = 8
+# THE BUG THIS REPLACES, BECAUSE IT COST AN OUTAGE
+# -------------------------------------------------
+# The cache used to hold eight days, with a comment saying that came to about
+# 260 MB resident. The systemd unit sets MemoryHigh=220M. Those two numbers
+# were written at different times and nobody put them side by side, so the
+# service was configured to grow straight through its own ceiling.
+#
+# Crossing MemoryHigh does not kill a process - the kernel throttles the whole
+# cgroup into constant reclaim instead. So the service stayed "active
+# (running)" with a healthy log and simply stopped answering, which is a far
+# worse failure than a crash: systemd sees nothing wrong and never restarts it.
+#
+# The fix is to stop keeping the two numbers in separate files. The cache now
+# reads the real ceiling out of its own cgroup at run time and evicts to stay
+# under a fraction of it. The day count below is only a second line of defence.
+MAX_CACHED_DAYS = 4
+
+# Used only if the cgroup cannot be read - a plain Mac, a container without
+# limits, a future init system. Deliberately below the 220 MB the unit sets.
+FALLBACK_MEMORY_BUDGET_MB = 170.0
+
+# How much of the ceiling the caches may occupy. The rest is headroom for
+# actually solving a day, which is the part that spikes.
+MEMORY_BUDGET_SHARE = 0.75
 
 _day_cache = OrderedDict()
 _baseline_cache = OrderedDict()
 _gates_cache = None
+
+# Only one exact solve at a time.
+#
+# FastAPI runs a plain `def` endpoint in a thread pool, so two visitors ticking
+# "solve exactly" really do solve at once. Measured, each one holds roughly
+# 50 MB that eviction cannot reclaim while it runs - two together clear the
+# 220 MB ceiling and throttle the whole service to a standstill. Queueing them
+# costs the second visitor some waiting; not queueing them costs everyone the
+# service. The network flow is untouched: it is a second's work and runs freely.
+_exact_solve_lock = threading.Lock()
 
 
 def _release_memory_to_os():
@@ -122,6 +155,47 @@ def _release_memory_to_os():
         pass
 
 
+def _memory_budget_mb():
+    """How much memory the caches are allowed to hold, in megabytes.
+
+    Read from the service's own cgroup rather than from a number typed into
+    this file, so the cache can never again be configured to grow past the
+    limit systemd will enforce on it. cgroup v2 exposes MemoryHigh as
+    memory.high; the value is bytes, or the literal string "max" when no limit
+    is set. Anything unreadable falls back to the constant above.
+    """
+    for path in ("/sys/fs/cgroup/memory.high", "/sys/fs/cgroup/memory.max"):
+        try:
+            with open(path) as limit_file:
+                raw = limit_file.read().strip()
+            if raw and raw != "max":
+                return (int(raw) / 1024 / 1024) * MEMORY_BUDGET_SHARE
+        except (OSError, ValueError):
+            continue
+    return FALLBACK_MEMORY_BUDGET_MB
+
+
+def _trim_to_memory_budget():
+    """Drop cached work until this process fits back inside its budget.
+
+    Evicts baselines before days: a baseline is one solve away from being
+    rebuilt, while a day is a database read plus a DataFrame. Always leaves one
+    of each, so the request in flight still has what it needs.
+    """
+    budget = _memory_budget_mb()
+    for _ in range(len(_baseline_cache) + len(_day_cache)):
+        resident = _resident_memory_mb()
+        if resident is None or resident <= budget:
+            return
+        if len(_baseline_cache) > 1:
+            _baseline_cache.popitem(last=False)
+        elif len(_day_cache) > 1:
+            _day_cache.popitem(last=False)
+        else:
+            return                     # nothing left worth dropping
+        _release_memory_to_os()
+
+
 def _remember(cache, key, value):
     """Store a value, evicting the least recently used if the cache is full."""
     cache[key] = value
@@ -132,6 +206,8 @@ def _remember(cache, key, value):
         evicted = True
     if evicted:
         _release_memory_to_os()
+    # The day count is a rough guard; actual memory is the one that matters.
+    _trim_to_memory_budget()
     return value
 
 
@@ -207,8 +283,10 @@ def health():
         "status": "ok" if database_present else "database missing",
         "database": str(config.DATABASE_PATH),
         "days_cached": len(_day_cache),
+        "baselines_cached": len(_baseline_cache),
         "cache_limit": MAX_CACHED_DAYS,
         "resident_memory_mb": _resident_memory_mb(),
+        "memory_budget_mb": round(_memory_budget_mb(), 1),
     }
 
 
@@ -382,12 +460,25 @@ def optimize(request: ScenarioRequest):
     # trade-off visible instead of hiding it.
     solver = solver_ilp if request.use_exact_solver else solver_mcnf
 
-    # Hand in the cached baseline so only the recovery has to be solved.
-    baseline = get_baseline(request.date, request.use_exact_solver)
+    # The lock has to cover the BASELINE as well as the recovery. Getting this
+    # wrong once is instructive: with only the recovery guarded, two visitors
+    # on two different days both solved an uncached baseline exactly, at the
+    # same time, outside the lock - measured peak 247 MB against a 220 MB
+    # ceiling. The expensive work is any exact solve, not just the last one.
+    guard = _exact_solve_lock if request.use_exact_solver else contextlib.nullcontext()
+    with guard:
+        # Hand in the cached baseline so only the recovery has to be solved.
+        baseline = get_baseline(request.date, request.use_exact_solver)
+        result = costs.damage_and_recovery(
+            blocks, get_gates(), scenario, solver, baseline_solution=baseline
+        )
 
-    result = costs.damage_and_recovery(
-        blocks, get_gates(), scenario, solver, baseline_solution=baseline
-    )
+    # Solving builds a network of tens of thousands of edges, or a whole
+    # integer program. Hand the leftovers back now rather than carrying them
+    # until the next eviction happens to fire, and drop cached days if the
+    # solve has pushed the process over its budget.
+    _release_memory_to_os()
+    _trim_to_memory_budget()
 
     if not result["feasible"]:
         raise HTTPException(
@@ -447,7 +538,8 @@ def assignment(request: ScenarioRequest):
         get_gates(), request.closed_gates, request.closed_concourses
     )
 
-    baseline = get_baseline(request.date)
+    with (_exact_solve_lock if request.use_exact_solver else contextlib.nullcontext()):
+        baseline = get_baseline(request.date)
     gate_by_block_id = {}
     for position in baseline["assignment"]:
         block_id = blocks.loc[position, "block_id"]
@@ -462,7 +554,11 @@ def assignment(request: ScenarioRequest):
             previous[position] = was
 
     solver = solver_ilp if request.use_exact_solver else solver_mcnf
-    solution = solver.solve(disrupted, open_gates, previous_assignment=previous)
+    guard = _exact_solve_lock if request.use_exact_solver else contextlib.nullcontext()
+    with guard:
+        solution = solver.solve(disrupted, open_gates, previous_assignment=previous)
+    _release_memory_to_os()
+    _trim_to_memory_budget()
 
     if not solution["feasible"]:
         raise HTTPException(status_code=422, detail=solution.get("reason"))
