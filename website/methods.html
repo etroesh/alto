@@ -34,22 +34,24 @@
     border-bottom: 1px solid var(--rule-2); vertical-align: top;
   }
   .doc th {
-    font-family: "IBM Plex Mono", ui-monospace, monospace;
-    font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
-    color: var(--muted); font-weight: 500;
+    font-size: 14px;
+    color: var(--muted); font-weight: 400;
     border-bottom-color: var(--rule-heavy);
   }
   .doc td.num {
     font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-variant-numeric: tabular-nums; white-space: nowrap;
   }
-  .doc .bad { color: var(--delayed); font-weight: 600; }
-  .doc .ok { color: var(--good); font-weight: 600; }
+  .doc .bad { color: var(--delayed); }
+  .doc .ok { color: var(--good); }
+  /* The formulation lines are aligned with spaces, so they must not wrap.
+     Narrower than the column, they scroll inside the block instead. */
   .doc .math {
     font-family: "IBM Plex Mono", ui-monospace, monospace;
-    font-size: 13px; line-height: 2;
+    font-size: 13px; line-height: 1.9;
     background: var(--paper-2);
-    padding: 18px 22px; margin: 20px 0; overflow-x: auto;
+    padding: 18px 22px; margin: 20px 0;
+    overflow-x: auto; white-space: nowrap;
   }
   .doc .tbl-scroll { overflow-x: auto; }
   .doc a { color: var(--ink); text-decoration-color: var(--rule); text-underline-offset: 3px; }
@@ -214,7 +216,7 @@ every period after that&nbsp;$5,000&nbsp;&nbsp;&nbsp;per 12-hour period
 <b>Minimize</b>&nbsp;&nbsp; F · Σ<sub>b,g∈S</sub> x[b,g]  +  M · Σ<sub>g</sub> y[g]  +  Σ<sub>b,g</sub> walk[g] · x[b,g]<br><br>
 <b>Subject to</b><br>
 &nbsp;&nbsp;Σ<sub>g</sub> x[b,g] = 1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;∀ b&nbsp;&nbsp;&nbsp;&nbsp;every block gets exactly one gate<br>
-&nbsp;&nbsp;Σ<sub>b∈Q</sub> x[b,g] ≤ y[g]&nbsp;&nbsp;&nbsp;&nbsp;∀ Q, g&nbsp;&nbsp;blocks on the ground together cannot share a gate<br>
+&nbsp;&nbsp;Σ<sub>b∈Q</sub> x[b,g] ≤ y[g]&nbsp;&nbsp;&nbsp;&nbsp;∀ Q, g&nbsp;&nbsp;overlapping blocks cannot share a gate<br>
 &nbsp;&nbsp;y[g] ≥ y[g+1]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;∀ g&nbsp;&nbsp;&nbsp;&nbsp;symmetry breaking
 </div>
 <p>The three terms are ranked rather than blended. S is the set of common-use stands, billed per turn, so F comes first. M sits above the largest walking cost a day could incur, so no amount of walking justifies an extra gate. Walking decides what is left.</p>
