@@ -51,16 +51,6 @@
     background: var(--paper-2);
     padding: 18px 22px; margin: 20px 0; overflow-x: auto;
   }
-  /* A callout is an aside, marked by a rule down its side rather than a box. */
-  .doc .callout { border-left: 2px solid var(--delayed); padding: 4px 0 4px 20px; margin: 26px 0; }
-  .doc .callout.good { border-left-color: var(--good); }
-  .doc .callout p:last-child { margin-bottom: 0; }
-  .doc .callout .tag {
-    font-family: "IBM Plex Mono", ui-monospace, monospace;
-    font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
-    color: var(--delayed); display: block; margin-bottom: 8px; font-weight: 500;
-  }
-  .doc .callout.good .tag { color: var(--good); }
   .doc .tbl-scroll { overflow-x: auto; }
   .doc a { color: var(--ink); text-decoration-color: var(--rule); text-underline-offset: 3px; }
   .doc a:hover { text-decoration-color: var(--ink); }
@@ -96,30 +86,30 @@
 
 <div class="doc">
 
-<p class="lead">ALTO assigns Alaska Airlines' daily aircraft turns at Seattle&#8209;Tacoma to gates, prices what a disruption costs, and measures how much of that cost re-optimizing recovers. This page is the full account: the formulation, the data, the mistakes found along the way, the validation, and the things it cannot tell you.</p>
+<p class="lead">ALTO assigns Alaska's daily aircraft turns at Seattle&#8209;Tacoma to gates, prices what a disruption costs, and measures how much of that re-planning gets back. This page covers where the data came from, how the model is put together, the mistakes I made building it, and what it cannot tell you.</p>
 
 <div class="toc">
   <a href="#data">1 · The data</a>
   <a href="#turns">2 · Building turns</a>
-  <a href="#towing">3 · The towing rule</a>
+  <a href="#towing">3 · Where aircraft park</a>
   <a href="#model">4 · The model</a>
   <a href="#validation">5 · Validation</a>
   <a href="#cost">6 · The cost model</a>
-  <a href="#disruption">7 · Disruption</a>
+  <a href="#disruption">7 · What a disruption costs</a>
   <a href="#limits">8 · What this cannot tell you</a>
 </div>
 
 <!-- 1 -->
 <h2 id="data">1 · The data</h2>
-<p>Every flight comes from the U.S. Bureau of Transportation Statistics <b>Airline On-Time Performance</b> dataset for 2023, filtered to carrier code <code>AS</code> with either origin or destination <code>SEA</code>. That is <b>139,000 flight records</b>, of which 155,246 leg-records survive after removing cancellations and diversions.</p>
-<p>BTS is used because it is the only public source with <em>actual</em> wheels-down and pushback times, not just scheduled ones. Gate occupancy depends on when aircraft really arrived.</p>
-<p>All times are converted to <b>absolute minutes since 1 January 00:00</b>. BTS stores clock times as <code>HHMM</code> integers, where comparing 1438 on the 15th against 0410 on the 16th gives the wrong order and every overnight turn becomes a special case. One integer per moment removes that entire class of bug.</p>
-<p>Arrivals crossing midnight are corrected: BTS stamps a flight with its <em>departure</em> date, so a red-eye landing at 04:10 records that time against the previous day. Detected by an arrival clock time earlier than its departure clock time.</p>
+<p>Every flight comes from the U.S. Bureau of Transportation Statistics Airline On-Time Performance dataset for 2023, filtered to carrier code <code>AS</code> with either origin or destination <code>SEA</code>. That is 139,000 flight records, of which 155,246 leg-records survive once cancellations and diversions are removed.</p>
+<p>I used BTS because it records actual wheels-down and pushback times. Gate occupancy depends on when an aircraft really arrived.</p>
+<p>All times become absolute minutes since 1 January 00:00. BTS stores clock times as <code>HHMM</code> integers, so comparing 1438 on the 15th against 0410 on the 16th gives the wrong order, and every overnight turn turns into a special case. One integer per moment removes that whole class of bug.</p>
+<p>Arrivals crossing midnight need correcting. BTS stamps a flight with its departure date, so a red-eye landing at 04:10 records that time against the previous day. I catch it by looking for an arrival clock time earlier than its departure clock time.</p>
 
 <h3>Does this look like Seattle?</h3>
-<p>Before trusting a single number out of the model, the shape of the data was checked against what the airport itself publishes. The Port of Seattle says <b>August is the busiest travel month</b> at SEA, and that TSA expects the busiest checkpoint days to be <b>Sundays and Mondays, and again Thursdays and Fridays</b>. Neither fact was used to build anything — they are an outside check.</p>
+<p>Before trusting anything the model produced, I checked the shape of the data against what the airport publishes. The Port of Seattle says August is its busiest travel month, and that TSA expects the busiest checkpoint days to be Sundays, Mondays, Thursdays and Fridays. Both are outside checks. Neither went into building anything.</p>
 <div class="tbl-scroll"><table>
-  <tr><th>Day</th><th class="num">Mean aircraft visits</th><th>Named by the Port/TSA as busy?</th></tr>
+  <tr><th>Day</th><th class="num">Mean aircraft visits</th><th>Named busy by the Port and TSA</th></tr>
   <tr><td>Friday</td><td class="num">227.3</td><td class="ok">yes</td></tr>
   <tr><td>Monday</td><td class="num">227.2</td><td class="ok">yes</td></tr>
   <tr><td>Thursday</td><td class="num">227.2</td><td class="ok">yes</td></tr>
@@ -128,19 +118,16 @@
   <tr><td>Tuesday</td><td class="num">212.5</td><td>no</td></tr>
   <tr><td>Saturday</td><td class="num">199.1</td><td>no</td></tr>
 </table></div>
-<p>The four busiest weekdays in this dataset are exactly the four the airport names, and the three quietest are exactly the three it does not. Monthly means agree too: August is the highest month at <b>254.9</b> visits a day against February's <b>187.1</b>.</p>
-<div class="callout">
-  <span class="tag">A distinction worth keeping straight</span>
-  <p>TSA's busiest <em>day</em> of 2023 nationally was the Sunday after Thanksgiving, at 2.9 million passengers. In this dataset Thanksgiving week is unremarkable and Thanksgiving Day itself is the quietest day of the year. Both are true: the holiday peak is <b>full aeroplanes</b>, while the summer peak is <b>more aeroplanes</b>. Gates are consumed by aircraft, not by passengers, so this model tracks the second one.</p>
-</div>
-<p><b>On "the busiest day."</b> The single busiest day here is 28 July, at 267 aircraft visits — a Friday in the peak month. It is not a meaningful gap: the top ten days run 267 down to 263, a spread of <b>1.5%</b>, and all ten fall in late July and August. Which one ranks first changed when arrival-only and departure-only visits were added, because the margin is a handful of aircraft. Ranked by gate blocks instead, 7 August leads with 382; ranked by cost to run, 7 August again at $147,679; ranked by stands needed, 27 July at 36. The interface says so rather than presenting one date as a fact.</p>
+<p>The four busiest weekdays here are the four the airport names, and the three quietest are the three it leaves out. The months line up too. August is highest at 254.9 visits a day, February lowest at 187.1.</p>
+<p>TSA's busiest day nationally in 2023 was the Sunday after Thanksgiving, at 2.9 million passengers. In this dataset Thanksgiving Day is the quietest day of the year. Both can be true at once. The holiday peak is fuller aeroplanes and the summer peak is more aeroplanes, and a gate is taken by an aircraft.</p>
+<p>The busiest single day here is 28 July, at 267 visits. The margin is not worth much. The top ten days run 267 down to 263 and all of them fall in late July or August, so which one ranks first changed when I added arrival-only and departure-only visits. Rank by gate blocks and 7 August leads with 382. Rank by fees and 7 August leads again. Rank by stands needed and it is 27 July with 36. The model page says as much rather than naming a single date.</p>
 
 <!-- 2 -->
-<h2 id="turns">2 · Building turns, and the bug that broke the first attempt</h2>
-<p>A <b>turn</b> is one aircraft's ground visit: it lands, sits at a gate, and departs. The first version of this project built turns with a pandas merge on tail number and date. That is a cartesian join, and it is wrong.</p>
+<h2 id="turns">2 · Building turns</h2>
+<p>A turn is one aircraft's ground visit. It lands, sits at a gate, departs. My first version built turns with a pandas merge on tail number and date, which is a cartesian join.</p>
 
 <h3>One aircraft, one day</h3>
-<p>Tail <b>N434AS</b>, 15 July 2023, came through Seattle twice:</p>
+<p>Tail N434AS came through Seattle twice on 15 July 2023:</p>
 <div class="tbl-scroll"><table>
   <tr><th>Time</th><th>Event</th></tr>
   <tr><td class="num">14:38</td><td>arrives from JFK</td></tr>
@@ -148,7 +135,7 @@
   <tr><td class="num">21:47</td><td>arrives from SFO</td></tr>
   <tr><td class="num">23:28</td><td>departs for JFK</td></tr>
 </table></div>
-<p>Two visits. The merge produced four pairings, and the follow-up filter caught only one of the bad ones:</p>
+<p>Two visits. The merge produced four pairings, and my follow-up filter caught only one of the bad ones.</p>
 <div class="tbl-scroll"><table>
   <tr><th>Pairing</th><th class="num">Ground time</th><th>Verdict</th></tr>
   <tr><td>14:38 → 15:51</td><td class="num">73 min</td><td class="ok">real</td></tr>
@@ -156,27 +143,21 @@
   <tr><td>21:47 → 15:51</td><td class="num">—</td><td>removed by the time filter</td></tr>
   <tr><td>21:47 → 23:28</td><td class="num">101 min</td><td class="ok">real</td></tr>
 </table></div>
-
-<div class="callout">
-  <span class="tag">Why this mattered</span>
-  <p>The model believed N434AS blocked a gate from mid-afternoon until nearly midnight, while the aircraft was in fact in San Francisco. Across the dataset that inflated 2023 from 75,347 turns to 79,052, pushed the 75th-percentile turn from 106 minutes to 305, and drove peak simultaneous gate demand on 15 July from 29 to <b>76</b>.</p>
-  <p>Alaska has 57 gates. Peak demand of 76 makes the assignment problem <b>infeasible</b> — not slow, infeasible. No valid answer exists, and the solver correctly refused to produce one.</p>
-</div>
-
-<p><b>The fix</b> is to stop treating a day as a bag of arrivals and a bag of departures, and instead walk each aircraft's timeline in order: pair every arrival with the <em>next unclaimed</em> departure by the same tail, removing each departure from the pool once used. The phantom turn is never constructed rather than filtered out afterwards.</p>
-<p>It was found by sanity-checking the turn-time distribution against how long a 737 actually sits at a gate. A 75th percentile of five hours is not a turnaround.</p>
+<p>So the model had N434AS holding a gate from mid-afternoon until nearly midnight while the aircraft was in San Francisco. Across 2023 that turned 75,347 real turns into 79,052, pushed the 75th-percentile turn from 106 minutes to 305, and drove peak gate demand on 15 July from 29 up to 76. Alaska has 57 gates, so the assignment problem had no solution at all, and the solver refused to give one.</p>
+<p>The fix walks each aircraft's timeline in order and pairs every arrival with the next unclaimed departure by the same tail, taking each departure out of the pool once it is used. The phantom turn never gets built in the first place.</p>
+<p>I found it by checking the turn-time distribution against how long a 737 actually sits at a gate. A 75th percentile of five hours is not a turnaround.</p>
 
 <h3>What gets discarded</h3>
 <div class="tbl-scroll"><table>
   <tr><th>Rule</th><th>Reason</th><th class="num">Count</th></tr>
-  <tr><td>Ground time under 20 minutes</td><td>Physically impossible for a 737; a bad time in the source</td><td class="num">5</td></tr>
-  <tr><td>Gap over 36 hours</td><td>Too long to be one visit — the aircraft left on a flight not in our data</td><td class="num">2,071</td></tr>
-  <tr><td>No matching departure</td><td>Flew in and never flew out within the data — no longer discarded, see below</td><td class="num">—</td></tr>
+  <tr><td>Ground time under 20 minutes</td><td>Physically impossible for a 737, so a bad time in the source</td><td class="num">5</td></tr>
+  <tr><td>Gap over 36 hours</td><td>Too long for one visit; the aircraft left on a flight outside this data</td><td class="num">2,071</td></tr>
+  <tr><td>No matching departure</td><td>Kept now, as an arrival-only visit</td><td class="num">—</td></tr>
 </table></div>
-<p>The 36-hour cutoff is supported by the tariff: the Port of Seattle charges $200 per 12-hour period for overnight parking and <b>$5,000</b> per 12-hour period beyond 24 hours. Aircraft do not sit.</p>
+<p>The tariff supports the 36-hour cutoff. The Port of Seattle charges $200 per 12-hour period for overnight parking and $5,000 per 12-hour period beyond 24 hours. Aircraft do not sit.</p>
 
 <h3>Aircraft that only arrive, or only depart</h3>
-<p>Defining a turn as an arrival <em>paired with</em> a departure quietly deleted a whole category of gate use: the aircraft that ends its day in Seattle and the one that starts its day here. Neither has a pair, so neither existed in the turns table — yet both occupy a gate.</p>
+<p>Defining a turn as an arrival paired with a departure dropped a whole category of gate use. An aircraft that ends its day in Seattle has no departure to pair with, and one that starts its day here has no arrival. Both take a gate.</p>
 <div class="tbl-scroll"><table>
   <tr><th>Counted against the raw files</th><th class="num">Rows</th></tr>
   <tr><td>Arrivals into SEA</td><td class="num">77,526</td></tr>
@@ -185,159 +166,142 @@
   <tr><td>Arrivals with no departure</td><td class="num bad">2,179</td></tr>
   <tr><td>Departures with no arrival</td><td class="num bad">2,373</td></tr>
 </table></div>
-<p>That is roughly <b>12.5 gate uses a day</b> the model could not see. It also explained something visible in the interface: the flight picker never offered anything that began or ended in Seattle, only aircraft passing through.</p>
-<p>These are now built as <b>arrival-only</b> and <b>departure-only</b> visits, and their length comes from the airport rather than from us. The Port of Seattle's tariff publishes separate maximum gate occupancies for exactly these two cases — <b>60 minutes</b> arrival-only and <b>75 minutes</b> departure-only for a 100–199 seat aircraft — so those are the numbers used.</p>
-<div class="callout">
-  <span class="tag">After the fix</span>
-  <p><b>79,899</b> visits and <b>108,050</b> occupancy blocks. Peak simultaneous stand demand per day: minimum 23, median 31, maximum 39 — no day pushed past the 73-stand roster. The three methods still agree on <b>16 of 16</b> days tested.</p>
-</div>
+<p>That is roughly 12.5 gate uses a day the model could not see, and it explains why the flight picker only ever offered aircraft passing through Seattle.</p>
+<p>They are built as arrival-only and departure-only visits now. Their lengths come from the tariff, which publishes separate maximum gate occupancies for both cases: 60 minutes for an arrival-only visit and 75 for a departure-only one, at 100 to 199 seats.</p>
+<p>After the rebuild the dataset holds 79,899 visits and 108,050 occupancy blocks. Peak stand demand runs between 23 and 39 a day, median 31, with no day past the 73-stand roster. The three methods still agree on all 16 days tested.</p>
 
 <!-- 3 -->
 <h2 id="towing">3 · Where aircraft park</h2>
-
-<p class="lead">Seattle-Tacoma publishes a maximum gate occupancy. Every number in this section is that document's, not ours.</p>
+<p class="lead">Seattle-Tacoma publishes a maximum gate occupancy. The numbers in this section come from that document.</p>
 
 <div class="tbl-scroll"><table>
   <tr><th>Aircraft</th><th class="num">Turnaround</th><th class="num">Arrival only</th><th class="num">Departure only</th></tr>
   <tr><td>400+ seats</td><td class="num">180 min</td><td class="num">75</td><td class="num">120</td></tr>
   <tr><td>200–399 seats</td><td class="num">150 min</td><td class="num">60</td><td class="num">90</td></tr>
-  <tr><td><b>100–199 seats</b> — Alaska's 737-800/900</td><td class="num ok"><b>120 min</b></td><td class="num ok"><b>60</b></td><td class="num ok"><b>75</b></td></tr>
+  <tr><td>100–199 seats, Alaska's 737-800 and -900</td><td class="num ok">120 min</td><td class="num ok">60</td><td class="num ok">75</td></tr>
   <tr><td>Under 100 seats</td><td class="num">90 min</td><td class="num">45</td><td class="num">45</td></tr>
 </table></div>
 
-<p>Past the limit the airport charges a <b>gate delay fee per 15-minute increment</b>: $250 for the first 90 minutes over, $500 up to four hours over, <b>$1,000 beyond that</b>. An aircraft left at a gate overnight would owe tens of thousands of dollars. It is not left there.</p>
+<p>Past the limit the airport charges a gate delay fee for every 15-minute increment: $250 for the first 90 minutes over, $500 up to four hours over, $1,000 after that. An aircraft left at a gate overnight would owe tens of thousands of dollars.</p>
 
-<p>Industry practice says the same thing in plainer words. An aircraft going out of service for the day is "parked on a remote area of the airport, or at least pushed back away from the boarding gate" — the procedure known as <b>Remain Overnight</b>.</p>
+<p>Industry practice says the same thing in plainer words. An aircraft going out of service for the day is parked on a remote area of the airport, or at least pushed back away from the boarding gate. The procedure is called Remain Overnight.</p>
 
-<p>So a turn longer than the published maximum becomes <b>two gate blocks</b>: the arrival, sized to the airport's 60-minute arrival-only limit; the aircraft towed away; then a return to board, sized to the 75-minute departure-only limit. Those block lengths are the tariff's, not ours.</p>
+<p>So a turn longer than the published maximum becomes two gate blocks. The arrival, at the tariff's 60-minute arrival-only limit. The aircraft towed away. Then a return to board, at the 75-minute departure-only limit.</p>
 
 <h3>What parking away costs</h3>
-<p>Not a flat fee, which is how an earlier version of this model had it.</p>
+<p>The tariff charges for it in steps.</p>
 <div class="math">
 up to 4 hours&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;$100&nbsp;&nbsp;&nbsp;remote hardstand fee<br>
 each of the next two&nbsp;&nbsp;&nbsp;&nbsp;$200&nbsp;&nbsp;&nbsp;per 12-hour period<br>
 every period after that&nbsp;$5,000&nbsp;&nbsp;&nbsp;per 12-hour period
 </div>
-<p>That last step is deliberately punishing — it is what stops carriers using Sea-Tac as a car park — and it means an aircraft sitting for two days costs vastly more than one sitting for six hours. A flat $100 hid all of it.</p>
+<p>That last step is punishing enough to stop carriers using Sea-Tac as a car park, and it means two days of sitting costs vastly more than six hours. My first version charged a flat $100 and lost all of it.</p>
 
-<div class="callout">
-  <span class="tag">A correction, kept on the page</span>
-  <p>For a day this model used a different rule: tow only when another aircraft needs the gate, reasoning that at three in the morning nobody wants it. <b>That reasoning was never checked against a source, and it was wrong.</b> The tariff's occupancy limits and its Remain Overnight schedule are both built around aircraft not sitting at gates, and industry practice is to move them off.</p>
-  <p style="margin-top:10px">The evidence that seemed damning at the time — gates sitting empty overnight while remote stands filled up — turns out to be simply what a hub looks like at five in the morning.</p>
-  <p style="margin-top:10px">Every parameter in the model now carries its source in <a href="https://github.com/etroesh/alto/blob/main/docs/verification.md">docs/verification.md</a>, marked <b>verified</b>, <b>derived</b> or <b>assumed</b>. Two entries are marked only <em>partially</em> verified, and both are named there rather than glossed.</p>
-</div>
+<h3>A rule I got wrong</h3>
+<p>For about a day this model towed only when another aircraft needed the gate, on the reasoning that at three in the morning nobody wants it. I never checked that reasoning against a source, and it was wrong. The tariff's occupancy limits and its Remain Overnight schedule are both built around aircraft not sitting at gates.</p>
+<p>The evidence that seemed damning at the time was gates standing empty overnight while remote stands filled up. That is what a hub looks like at five in the morning.</p>
+<p>Every parameter now carries its source in <a href="https://github.com/etroesh/alto/blob/main/docs/verification.md">docs/verification.md</a>, marked verified, derived or assumed. Two are marked partially verified, and both say what is still open.</p>
 
 <!-- 4 -->
 <h2 id="model">4 · The model</h2>
-<p>Two solvers run the same problem. One is fast enough to sit behind a slider; the other is the literal statement of the problem and is used to prove the first one right.</p>
+<p>Two solvers run the same problem. One is fast enough to sit behind a slider. The other is the literal statement of the problem, and I use it to check the first.</p>
 
-<h3>The integer program — the honest statement</h3>
+<h3>The integer program</h3>
 <div class="math">
 <b>Variables</b><br>
 &nbsp;&nbsp;x[b,g] = 1 if block b is parked at gate g, else 0<br>
 &nbsp;&nbsp;y[g]&nbsp;&nbsp;&nbsp;= 1 if gate g is used at all that day, else 0<br><br>
-<b>Minimize</b>&nbsp;&nbsp; M · Σ<sub>g</sub> y[g]  +  Σ<sub>b,g</sub> walk[g] · x[b,g]<br><br>
+<b>Minimize</b>&nbsp;&nbsp; F · Σ<sub>b,g∈S</sub> x[b,g]  +  M · Σ<sub>g</sub> y[g]  +  Σ<sub>b,g</sub> walk[g] · x[b,g]<br><br>
 <b>Subject to</b><br>
 &nbsp;&nbsp;Σ<sub>g</sub> x[b,g] = 1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;∀ b&nbsp;&nbsp;&nbsp;&nbsp;every block gets exactly one gate<br>
 &nbsp;&nbsp;Σ<sub>b∈Q</sub> x[b,g] ≤ y[g]&nbsp;&nbsp;&nbsp;&nbsp;∀ Q, g&nbsp;&nbsp;blocks on the ground together cannot share a gate<br>
 &nbsp;&nbsp;y[g] ≥ y[g+1]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;∀ g&nbsp;&nbsp;&nbsp;&nbsp;symmetry breaking
 </div>
-<p><b>M</b> is set above the largest walking cost the day could possibly incur, so no amount of walking can ever justify an extra gate. That makes it a lexicographic objective — rank the goals rather than blending them — expressed as a single sum.</p>
-<p>Two things make it tractable. <b>Q</b> ranges over maximal groups of mutually overlapping blocks rather than over pairs: gate occupancy forms an interval graph, so every group of overlapping blocks is already fully present when one of them starts. On 15 July that is <b>125 group constraints instead of 4,398 pairwise ones</b>, and each is a tighter statement. And <b>symmetry breaking</b> stops the solver proving that thousands of gate relabellings are equally good.</p>
+<p>The three terms are ranked rather than blended. S is the set of common-use stands, billed per turn, so F comes first. M sits above the largest walking cost a day could incur, so no amount of walking justifies an extra gate. Walking decides what is left.</p>
+<p>Two things make it tractable. Q ranges over maximal groups of mutually overlapping blocks rather than over pairs, which works because gate occupancy forms an interval graph and every group of overlapping blocks is already fully present when one of them starts. On 15 July that is 125 group constraints in place of 4,398 pairwise ones, and each one is tighter. Symmetry breaking then stops the solver proving that thousands of gate relabellings are equally good.</p>
 
-<h3>The network flow — the fast one</h3>
-<p>Forget gates and think about <b>chains</b>. A gate holds one aircraft, then another, then another. So "the fewest gates" is the same question as "the fewest chains covering every block" — a minimum-cost path cover, which is a network flow, which solves in milliseconds.</p>
+<h3>The network flow</h3>
+<p>Forget gates and think about chains. A gate holds one aircraft, then another, then another. So the fewest gates is the same question as the fewest chains covering every block, which is a minimum-cost path cover, which is a network flow, which solves in milliseconds.</p>
 <div class="math">
 each block becomes two nodes, a front door and a back door<br><br>
 SOURCE → in[i]&nbsp;&nbsp;&nbsp;&nbsp;open a gate for block i&nbsp;&nbsp;&nbsp;&nbsp;cost: high<br>
 out[i] → in[j]&nbsp;&nbsp;&nbsp;&nbsp;j follows i on the same gate&nbsp;cost: idle minutes<br>
 out[i] → SINK&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;i is last on its gate&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cost: 0<br>
-SINK → SOURCE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;the return pipe — its flow IS the number of gates
+SINK → SOURCE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;the return pipe, whose flow is the gate count
 </div>
-<p>Each block requires exactly one unit into its front door and one out of its back door, which forces the result to be a set of clean, non-overlapping chains. Chains are then paired with named gates by the Hungarian algorithm.</p>
-<p>A 10-minute buffer between consecutive aircraft at a gate is applied identically in the conflict test, the flow network, and the peak-demand count. If the three used different buffers, comparing them would prove nothing.</p>
+<p>Each block takes exactly one unit into its front door and one out of its back door, which forces the result into clean non-overlapping chains. The Hungarian algorithm then pairs chains with named gates, weighing the common-use fee first, how many aircraft would have to move second, and walking last.</p>
+<p>A 10-minute buffer between consecutive aircraft at a gate is applied identically in the conflict test, the flow network and the peak-demand count. Different buffers in different places would make the comparison meaningless.</p>
 
 <!-- 5 -->
 <h2 id="validation">5 · Validation</h2>
-<p>A millisecond answer is only acceptable if it is also the right answer. Three independent methods run on the same days:</p>
+<p>A millisecond answer is only worth having if it is also the right answer. Three independent methods run on the same days:</p>
 <ul>
-  <li><b>Sweep-line peak demand</b> — the most aircraft on the ground at once. A hard lower bound, and because gate occupancy is an interval graph, also the exact minimum.</li>
-  <li><b>Minimum-cost network flow</b> — the production solver.</li>
-  <li><b>Integer program</b> — the literal problem, solved exactly.</li>
+  <li>Sweep-line peak demand, the most aircraft on the ground at once. A hard lower bound, and because gate occupancy is an interval graph, the exact minimum as well.</li>
+  <li>Minimum-cost network flow, the production solver.</li>
+  <li>The integer program, solved exactly.</li>
 </ul>
-<div class="callout good">
-  <span class="tag">Result</span>
-  <p><b>16 of 16 days agree</b> on the number of gates — spread across quiet February weekdays, July 4th, Thanksgiving, Christmas Eve, and the busiest day in the dataset. Network flow averages <b>0.3 seconds</b> against the integer program's <b>12</b>, a speedup of 24× to 60×.</p>
-</div>
+<p>All 16 days agree on the number of gates. They cover quiet February weekdays, July 4th, Thanksgiving, Christmas Eve and the busiest day in the dataset. Network flow averages 0.3 seconds against the integer program's 12, so 24× to 60× faster.</p>
 
-<h3>Where the fast solver is worse, and why we say so</h3>
-<p>Gate <em>count</em> is optimal in both. <b>Walking cost is 9.3% worse</b> in the network flow model, on all 16 days.</p>
-<p>The cause is structural. Flow treats every gate as interchangeable, so it builds chains first and assigns gate names afterwards. The integer program chooses chains and names together and reaches arrangements flow cannot. The chain-to-gate pairing is already provably optimal <em>given the chains</em> — the gap lives in the chain structure, which per-gate costs cannot influence. It cannot be closed inside the flow model.</p>
-<p>Rather than quietly serving the worse answer, the model page offers a <b>Solve exactly</b> control that runs the integer program and shows the difference.</p>
+<h3>Where the fast solver is worse</h3>
+<p>Gate count is optimal in both. Walking cost is 9.3% worse in the network flow, on all 16 days.</p>
+<p>The cause is structural. Flow treats every gate as interchangeable, so it builds chains first and assigns gate names afterwards, while the integer program chooses chains and names together and reaches arrangements flow cannot. The chain-to-gate pairing is already provably optimal given the chains, so the gap lives in the chain structure and per-gate costs cannot influence it.</p>
+<p>The same structure costs more than walking when gates are scarce. A chain cannot be split, so shutting 39 gates leaves 18 leased stands against 31 chains, and thirteen chains land on common-use stands dragging every turn they contain with them. On 15 July that put 83 turns on common-use stands where placing blocks one at a time put 50. The integer program has no chain constraint and got the same day to 48. Measured on that day, the flow solver's re-plan came out $12,439 worse than improvising, and the integer program's came out $7,306 better.</p>
+<p>So the model page offers a Solve exactly control, and when the fast solver cannot beat the improvised plan it says so and keeps the improvised one.</p>
 
 <!-- 6 -->
 <h2 id="cost">6 · The cost model</h2>
-<div class="callout good">
-  <span class="tag">What is and is not counted</span>
-  <p>ALTO prices three things: <b>delay</b>, <b>aircraft parking and towing</b>, and <b>common-use gate charges</b>. Those are the costs a gate plan can change.</p>
-  <p>It does not price fuel, crew, maintenance, landing fees, ground handling, or the rent on Alaska's own gates. Those are real money and much larger, but they are the same whichever plan you choose, so including them would add a constant to every scenario and tell you nothing about which is better. Every figure on this site is therefore a <b>difference between plans</b>, not the cost of running an airline — and every component is a charge somebody invoices Alaska for.</p>
-</div>
-<p>Every figure is published and sourced. Anything derived says so.</p>
+<p>ALTO prices three things: delay, aircraft parking and towing, and common-use gate charges. Those are the costs a gate plan can change.</p>
+<p>It leaves out fuel, crew, maintenance, landing fees, ground handling and the rent on Alaska's own gates. Those are real money and much larger, and they are also the same whichever plan you pick, so adding them would put a constant on every scenario and say nothing about which plan is better. Every figure on this site is a difference between plans, and every component is something an airline gets invoiced for.</p>
 <div class="tbl-scroll"><table>
   <tr><th>Parameter</th><th class="num">Value</th><th>Source</th></tr>
   <tr><td>Delay cost</td><td class="num">$98.41 / min</td><td>A4A 2025 direct aircraft operating cost per block minute</td></tr>
   <tr><td>Common-use gate, narrowbody</td><td class="num">$552.89 / turn</td><td>Port of Seattle tariff, 1 Jan 2025, signatory rate</td></tr>
   <tr><td>Remote hardstand</td><td class="num">$100 / use</td><td>Port of Seattle tariff</td></tr>
-  <tr><td><s>Gate idle time</s></td><td class="num"><s>$6.14 / min</s></td><td class="bad">Retired — see below</td></tr>
-  <tr><td>Delay propagation</td><td class="num">0.75</td><td><em>Assumption</em> — no published figure exists</td></tr>
+  <tr><td><s>Gate idle time</s></td><td class="num"><s>$6.14 / min</s></td><td class="bad">Retired, see below</td></tr>
+  <tr><td>Delay propagation</td><td class="num">0.75</td><td>An assumption. No published figure exists</td></tr>
 </table></div>
-<p>The $98.41 breaks down as crew $37.01, fuel $29.34, maintenance $18.35, aircraft ownership $9.76, other $3.95. It is the <b>airline's own cost only</b>. A4A separately values passenger time at roughly $47 per hour, which ALTO does not include — so every disruption figure here is conservative.</p>
-<p>The propagation factor has no source at all and is exposed as a slider for exactly that reason.</p>
+<p>The $98.41 breaks down as crew $37.01, fuel $29.34, maintenance $18.35, aircraft ownership $9.76 and other $3.95. It is the airline's own cost. A4A separately values passenger time at roughly $47 an hour, which ALTO leaves out, so every disruption figure here sits on the low side.</p>
+<p>The propagation factor has no source at all, which is why it is a slider.</p>
 
-<div class="callout">
-  <span class="tag">Why idle gate time is no longer priced</span>
-  <p>It used to be, at a derived $6.14 a minute — the only figure in the cost model not quoted from a published tariff. It produced a result that cannot be true: on 17 June, closing gates N1, N11 and N20 gave a disruption cost of <b>minus $682</b>. Closing gates appeared to <em>save</em> money.</p>
-  <p>The mechanism is worth understanding. Idle was measured as the gaps between consecutive aircraft at the gates in use, so fewer gates in use meant fewer gaps to count. Neither solver minimises idle — the integer program minimises gate count and then walking — so idle was never optimised, only observed, and an improvised plan after a closure could beat the optimal one on it. Because idle was the largest term, at $105k of $146k that day, it swamped everything else.</p>
-  <p>The deeper problem is that idle time is not a charge. Rent on a preferential gate is fixed by the lease and does not move when the plan changes, so putting it in a comparison of plans adds a large number carrying no information about the decision. Every remaining figure is something an airline is actually invoiced for. Gate use is reported as a utilisation percentage instead.</p>
-</div>
+<h3>Why idle gate time is no longer priced</h3>
+<p>It used to be, at a derived $6.14 a minute, the one figure in the cost model I could not quote from a tariff. It produced a result that cannot be true. On 17 June, closing gates N1, N11 and N20 gave a disruption cost of minus $682, so closing gates appeared to save money.</p>
+<p>Idle was measured as the gaps between consecutive aircraft at the gates in use, so fewer gates in use meant fewer gaps to count. Neither solver minimises idle time, which means it was never being optimised, only observed, and an improvised plan after a closure could beat the optimal one on it. Idle was the largest term at $105k of $146k that day, so it swamped everything else.</p>
+<p>Underneath that, idle time is not a charge. Rent on a preferential gate is fixed by the lease and does not move when the plan changes, so putting it into a comparison of plans adds a large number that carries no information about the decision. Everything left is something an airline is invoiced for. Gate use is reported as a utilisation percentage.</p>
 
 <!-- 7 -->
 <h2 id="disruption">7 · What a disruption costs</h2>
-<p>Multiplying injected delay by cost per minute would miss where the money actually goes. A late arrival takes a gate that was promised to someone else; that aircraft holds, departs late, arrives late down-line, and is late back at Seattle that evening. One late arrival becomes six late departures.</p>
-<p>So the damage figure is a <b>simulation</b>. The day is run forward with the gate plan held fixed, under two forces that feed each other:</p>
+<p>Multiplying injected delay by cost per minute would miss where the money goes. A late arrival takes a gate promised to someone else, that aircraft holds, departs late, arrives late down-line, and is late back at Seattle in the evening. One late arrival becomes six late departures.</p>
+<p>So the damage figure is a simulation. The day runs forward with the gate plan held fixed, under two forces that feed each other:</p>
 <ul>
-  <li><b>Gate contention</b> — the gate you were promised is still occupied, so you wait.</li>
-  <li><b>Rotation carry</b> — your aircraft arrived late, so your departure is late. Slack absorbs part of it; the rest carries forward.</li>
+  <li>Gate contention. The gate you were promised is still occupied, so you wait.</li>
+  <li>Rotation carry. Your aircraft arrived late, so your departure is late. Slack absorbs part of it and the rest carries forward.</li>
 </ul>
-<p>Because each makes the other worse, this iterates rather than running once, following the delay one leg further each pass, capped at four legs. Beyond four the effect is smaller than the error in the estimate of it.</p>
+<p>Since each makes the other worse, this iterates rather than running once, following the delay one leg further each pass, capped at four legs. Past four the effect is smaller than the error in the estimate of it.</p>
 
-<h3>Doing nothing is not literally nothing</h3>
-<p>For a gate closure, the displaced aircraft has to go <em>somewhere</em>. An earlier version dropped them from the plan, and since a dropped aircraft incurs no cost, closing six gates appeared to <b>save $26,207</b>.</p>
-<p>The honest comparison is not <em>optimize versus nothing</em> but <b>optimize versus what a gate controller does under pressure</b>: take the displaced aircraft in time order and put each at the first free gate, no lookahead. If nothing is free it joins the shortest queue and holds, and the simulation prices that hold as gate contention.</p>
+<h3>Doing nothing, when a gate is shut</h3>
+<p>An aircraft whose gate has closed has to go somewhere. My first version dropped it from the plan, and a dropped aircraft costs nothing, so closing six gates appeared to save $26,207.</p>
+<p>The comparison that means something is optimising against what a gate controller does under pressure. Take the displaced aircraft in time order and put each one at the cheapest stand that is free, leased gates before common-use ones, with no lookahead. Anything that fits nowhere goes to a remote hardstand and pays the tariff for it.</p>
+<p>I tried sending all of them straight to hardstands, which cost $100 each against $552.89 for a common-use turn, and that made doing nothing cheaper than re-planning. A hardstand is not a substitute for a gate. An aircraft parked on one cannot board, so it is where an aircraft ends up when no stand is left, rather than a cheaper option somebody would choose.</p>
+<p>One more rule holds the comparison together. Closing a gate cannot make another aircraft leave earlier. Without it, taking aircraft off gates removed them from gate contention, the simulated delay for the day fell, and a bigger closure came out cheaper than a smaller one. The direction is certain even though the size is not, so the damage run keeps whichever departure time is later, its own or the one that block had with nothing closed.</p>
 
 <h3>Minimum-disruption recovery</h3>
-<p>A recovery plan that saves marginally more but reshuffles two hundred aircraft is not one operations can execute. Two mechanisms keep the answer actionable: the chain-to-gate pairing minimizes how many aircraft leave their original gate, and links used in the previous plan get a small discount inside the flow itself, so that among equally optimal arrangements the solver returns the one closest to the plan already in place.</p>
-<p>On a three-aircraft delay this took the number of aircraft moved from <b>265 to 56</b>, at a cost of 2.3 percentage points of recovered share. That trade was taken deliberately.</p>
+<p>A recovery plan that saves marginally more but reshuffles two hundred aircraft is not something operations can execute. Two mechanisms keep the answer usable. The chain-to-gate pairing counts how many aircraft would leave their original gate, and links used in the previous plan get a small discount inside the flow itself, so among equally good arrangements the solver returns the one closest to the plan already in place.</p>
+<p>On a three-aircraft delay that took the number of aircraft moved from 265 down to 56, at a cost of 2.3 percentage points of recovered share. I took that trade deliberately.</p>
 
 <!-- 8 -->
 <h2 id="limits">8 · What this cannot tell you</h2>
 
-<div class="callout">
-  <span class="tag">The big one — and it cannot be fixed from this data</span>
-  <p>Horizon Air and SkyWest fly Embraer E175s in Alaska livery and use Alaska's gates. Neither can be included, for two different reasons.</p>
-  <p style="margin-top:10px"><b>Horizon Air does not file BTS On-Time Performance at all.</b> The 2023 files contain exactly fifteen carriers — 9E, AA, AS, B6, DL, F9, G4, HA, MQ, NK, OH, OO, UA, WN, YX. Horizon is not among them. Its aircraft are invisible in this dataset and nothing can recover them.</p>
-  <p style="margin-top:10px"><b>SkyWest is present but cannot be attributed.</b> 3,170 SkyWest flights touched SEA in January 2023, against Alaska mainline's 11,605 — but SkyWest flies for Alaska, Delta, United and American at once, and this table records only the operating carrier. Three attribution attempts failed: there is no marketing-carrier or codeshare field; flight-number blocks do not separate partners, since both the 3000- and 4000-series serve Pacific Northwest routes from SEA; and aircraft do not segregate either — <b>103 of the 104 SkyWest tails that touched SEA in January also touched another mainline's hub.</b></p>
-  <p style="margin-top:10px">Attributing them by route heuristic would produce a plausible-looking number with no defensible basis. <b>A stated gap beats an unsourced guess.</b></p>
-  <p style="margin-top:10px">So: every utilization figure here is a <b>floor for Alaska mainline</b>, not an estimate of the Alaska brand's total gate demand. Closing it properly means BTS's separate <em>Marketing Carrier</em> table, which carries both operating and marketing carrier — and even that would not include Horizon.</p>
-</div>
+<h3>Regional flying is missing</h3>
+<p>Horizon Air and SkyWest fly Embraer E175s in Alaska livery and use Alaska's gates. Neither can be included, for two different reasons.</p>
+<p>Horizon does not file BTS On-Time Performance at all. The 2023 files contain exactly fifteen carriers: 9E, AA, AS, B6, DL, F9, G4, HA, MQ, NK, OH, OO, UA, WN and YX. Horizon is absent, so its aircraft are invisible here and nothing can recover them.</p>
+<p>SkyWest is present and cannot be attributed. 3,170 SkyWest flights touched SEA in January 2023 against Alaska mainline's 11,605, and SkyWest flies for Alaska, Delta, United and American at once while this table records only the operating carrier. I tried three ways to attribute them and all three failed. There is no marketing-carrier or codeshare field. Flight-number blocks do not separate partners, since both the 3000- and 4000-series serve Pacific Northwest routes from SEA. Aircraft do not segregate either: 103 of the 104 SkyWest tails that touched SEA in January also touched another mainline's hub.</p>
+<p>Attributing them by route heuristic would produce a plausible-looking number with nothing behind it, so I left the gap in place and stated it. Every utilisation figure here is a floor for Alaska mainline rather than an estimate of the Alaska brand's total gate demand. Closing it properly means BTS's separate Marketing Carrier table, which carries both operating and marketing carrier, and even that would leave Horizon out.</p>
 
-<p><b>No public dataset contains gate assignments.</b> Not BTS, not anything. Which gate a flight actually used is unknowable from public data. ALTO produces an <em>optimal</em> assignment, not a reconstruction of the real one, and there is no ground truth to validate against. The solvers are validated against each other and against theory — which is what section 5 does — but not against reality.</p>
-
-<p><b>The gate roster is a modeling assumption.</b> Seattle&#8209;Tacoma has 67 preferential-use gates under its current airline agreement, and Concourse C and the North Satellite are Alaska's. The exact roster, and the walking-cost weights attached to each gate, are constructed from the published terminal layout rather than measured.</p>
-
-<p><b>2023 flights are priced at 2025 rates.</b> The tariff and agreement figures are current; the flights are two years older. Fine for relative comparisons, worth stating.</p>
-
-<p><b>Delay costs exclude passenger time</b>, which A4A values at about $47 per hour. Including it would raise every disruption figure substantially.</p>
+<h3>The rest</h3>
+<p>No public dataset contains gate assignments. Which gate a flight actually used is unknowable from public data, so ALTO produces an optimal assignment rather than a reconstruction of the real one, and there is no ground truth to check it against. The solvers are validated against each other and against theory, which is what section 5 does.</p>
+<p>The gate roster is a modelling assumption. Seattle&#8209;Tacoma has 67 preferential-use gates under its current airline agreement, and Concourse C and the North Satellite are Alaska's. The exact roster, and the walking-cost weights on each gate, are built from the published terminal layout rather than measured.</p>
+<p>2023 flights are priced at 2025 rates. The tariff and agreement figures are current and the flights are two years older, which is fine for relative comparisons and worth stating.</p>
+<p>Delay costs leave out passenger time, which A4A values at about $47 an hour. Including it would raise every disruption figure substantially.</p>
 
 <h2>Sources</h2>
 <ul>
