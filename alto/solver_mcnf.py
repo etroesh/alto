@@ -261,6 +261,10 @@ def assign_chains_to_gates(chains, gates, previous_assignment=None,
     # six more common-use turns was reported as an improvement, recovering
     # minus $21,010. The fee goes in the pairing cost so the solver reaches
     # for a common-use stand only when there is no leased gate left.
+    # Above the worst walking cost per block (7.6), below the common-use fee
+    # per turn ($552.89). See the note in the cost matrix below.
+    MOVE_PENALTY = 50.0
+
     common_use_fee = [
         config.COMMON_GATE_TURN_FEE_NARROWBODY if str(gate_id).startswith("S") else 0.0
         for gate_id in gate_ids
@@ -295,10 +299,22 @@ def assign_chains_to_gates(chains, gates, previous_assignment=None,
             # A move is worth far more than a unit of walking, so moves decide
             # the pairing and walking only breaks ties between equally
             # disruptive options.
-            # Fees outrank moves: paying $552.89 a turn to avoid shuffling an
-            # aircraft between two gates it is already parked at is not a
-            # trade any airline would make.
-            cost_matrix[chain_index][gate_index] = fees + moves * 1000.0 + walking
+            # THE WEIGHTS ARE AN ORDERING, AND IT HAS TO BE THE RIGHT ONE.
+            #
+            # A move used to be worth 1000 - chosen when the only other term
+            # was walking, and moves had to win. Adding the common-use fee
+            # without revisiting it left 1000 outranking $552.89, so the
+            # solver would rather pay a real, published fee than shuffle an
+            # aircraft between two gates. It bought fewer moves with more
+            # money, and the re-plan came out worse than doing nothing on six
+            # of ten days sampled.
+            #
+            # The order that makes sense: an invoice beats an inconvenience,
+            # and an inconvenience beats a longer walk. A move is worth 50 -
+            # comfortably above the worst walking cost of 7.6 a block, and
+            # comfortably below the $552.89 that a common-use turn actually
+            # costs.
+            cost_matrix[chain_index][gate_index] = fees + moves * MOVE_PENALTY + walking
 
     chain_rows, gate_columns = linear_sum_assignment(cost_matrix)
 

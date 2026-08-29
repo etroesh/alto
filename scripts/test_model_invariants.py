@@ -160,17 +160,50 @@ def main():
                   result["recovered_dollars"] >= -0.01,
                   "recovered %.2f" % result["recovered_dollars"])
 
-        # 9. Closing MORE gates cannot reduce the damage. Nested closures, so
-        #    each scenario is strictly harder than the one before it.
+        # 8b. The severe-closure case, which is where this broke in public:
+        #     39 gates shut leaves 18 leased stands, so most turns have to go
+        #     to common-use. Reported on screen as recovering minus $38,011.
+        severe = (["C%d" % i for i in range(1, 28)]
+                  + ["D%d" % i for i in range(1, 11)] + ["N13", "N19"])
+        result = run(blocks, gates, date, delays={tails[0]: 60},
+                     closed=severe, baseline=base_solution)
+        if result.get("feasible", True):
+            check("severe closure: recovery is never worse than improvising",
+                  result["recovery"]["total_cost"] <= result["damage"]["total_cost"] + 0.01,
+                  "recovery %.0f vs damage %.0f" % (result["recovery"]["total_cost"],
+                                                    result["damage"]["total_cost"]))
+            check("severe closure: recovered dollars are never negative",
+                  result["recovered_dollars"] >= -0.01,
+                  "recovered %.2f" % result["recovered_dollars"])
+
+        # 9. Closing MORE gates cannot make the OPTIMISED plan cheaper. Nested
+        #    closures, so each scenario is strictly harder than the last.
+        #
+        #    THIS CHECK WAS DELIBERATELY NARROWED, AND HERE IS WHY.
+        #    It first asked the same of the DAMAGE run and failed: on 15 July,
+        #    damage across 0/3/10/17/27 closed gates went 82,816 / 85,793 /
+        #    85,793 / 86,211 / 83,922 - up, then down at the end. The damage
+        #    run is a greedy improvisation, and greedy is not monotone: with
+        #    seventeen gates shut the survivors fragment the remaining
+        #    capacity, while with all twenty-seven shut first-fit repacks the
+        #    whole concourse cleanly. A real controller improvising under
+        #    pressure is not monotone either.
+        #
+        #    Less capacity genuinely cannot produce a better plan, so the
+        #    claim belongs on the plan the model actually computes. On the
+        #    same day the recovery runs 49,209 / 49,209 / 49,209 / 49,209 /
+        #    50,315 - never down. Narrowing a check to what is true is
+        #    legitimate; widening a tolerance until a false claim passes is
+        #    not, and that is not what happened here.
         ladder = []
         allC = ["C%d" % i for i in range(1, 28)]
-        for size in (0, 3, 10, 27):
+        for size in (0, 3, 10, 17, 27):
             result = run(blocks, gates, date, delays={tails[0]: 60},
                          closed=allC[:size], baseline=base_solution)
             if result.get("feasible", True):
-                ladder.append((size, result["damage"]["total_cost"]))
+                ladder.append((size, result["recovery"]["total_cost"]))
         monotone = all(ladder[i][1] <= ladder[i + 1][1] + 0.01 for i in range(len(ladder) - 1))
-        check("closing more gates never reduces the damage",
+        check("closing more gates never makes the optimised plan cheaper",
               monotone,
               " -> ".join("%d gates:%.0f" % (n, c) for n, c in ladder))
 

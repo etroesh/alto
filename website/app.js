@@ -631,6 +631,16 @@ function verdictFor(result) {
       + "aircraft waiting for a gate, and no fee changes.";
   }
 
+  // The re-plan does not always beat the improvised plan. Saying so, with the
+  // reason, is more useful than a zero with no explanation.
+  if (result.recovery_improved === false) {
+    return cause + " adds <b>" + money(result.disruption_cost) + "</b> to the day's fees — and "
+      + "re-planning found <b>nothing better</b> than improvising. With this many gates shut, "
+      + "the fast solver has to keep each aircraft's whole chain of turns on one stand, which "
+      + "costs more in common-use fees than placing them one at a time. Tick "
+      + "<b>Solve exactly</b> and it usually wins.";
+  }
+
   let text = cause + " adds <b>" + money(result.disruption_cost) + "</b> to the day's fees. "
     + "Re-planning the whole day's gates gets <b class='up'>" + money(result.recovered_dollars)
     + "</b> of it back — " + result.recovered_percent + "% — by moving <b>"

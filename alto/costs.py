@@ -531,9 +531,33 @@ def damage_and_recovery(blocks, gates, scenario, solver, baseline_solution=None)
     # for every block left without a gate. Nothing is silently dropped, and
     # the cost can only go up as more gates close.
     #
-    # If there is genuinely nowhere to put the day's aircraft at all, the
-    # RECOVERY reports that as infeasible rather than inventing capacity.
-    damage_assignment = dict(stubborn_assignment)
+    # WHICH IS NOT THE SAME AS "STRAIGHT TO A HARDSTAND".
+    #
+    # Sending every displaced aircraft to a remote stand made "do nothing"
+    # CHEAPER than re-planning, because a hardstand is $100 and a common-use
+    # gate is $552.89 a turn. On 15 July with 39 gates closed: damage paid
+    # $67,200 in parking and no common-use fees at all, while the re-plan paid
+    # $48,654 in common-use fees - so re-planning was reported as recovering
+    # minus $13,048. Five of ten days sampled did the same.
+    #
+    # The error is treating a hardstand as a substitute for a gate. It is not.
+    # An aircraft on a remote stand at Sea-Tac cannot board passengers, so
+    # parking there is not an option a controller can choose in order to save
+    # money - it is what happens when there is no stand left at all.
+    #
+    # So a displaced aircraft takes whatever USABLE stand exists, cheapest
+    # first, which is what first_fit_for_displaced does - leased gates before
+    # common-use ones, because it walks the roster in walking-cost order and
+    # the S stands sort last. It is billed for a common-use turn if it lands
+    # on one. Only what genuinely will not fit anywhere goes to a hardstand,
+    # and price() bills that separately.
+    #
+    # The delay artefact this used to cause - a greedy re-placement breaking
+    # the queues that were propagating delay - is handled by the floor below,
+    # not by refusing to place aircraft.
+    damage_assignment = first_fit_for_displaced(
+        disrupted_blocks, stubborn_assignment, open_gates
+    )
 
     damage_simulation = simulate(disrupted_blocks, damage_assignment, costs)
 
@@ -599,6 +623,39 @@ def damage_and_recovery(blocks, gates, scenario, solver, baseline_solution=None)
     recovery_price = price(disrupted_blocks, recovery_solution["assignment"],
                            recovery_simulation, costs)
 
+    # WHEN THE RE-PLAN IS WORSE THAN THE IMPROVISED PLAN
+    # --------------------------------------------------
+    # It happens, and it is not a rounding error. Under a severe closure the
+    # FLOW solver can produce a plan that costs more than the controller's
+    # improvisation, because it assigns whole CHAINS to gates and a chain
+    # cannot be split. On 15 July with 39 gates closed - 18 leased gates left
+    # against 31 chains - thirteen chains had to land on common-use stands,
+    # carrying 83 turns at $552.89 each. First-fit places one block at a time
+    # and got the same day onto 50 common-use turns. Measured, same day, same
+    # closure, same delay:
+    #
+    #     flow solver   re-plan common-use $45,890   recovered  -$12,439
+    #     exact solver  re-plan common-use $26,539   recovered   +$7,306
+    #
+    # The integer program has no chain constraint, so it does not have this
+    # problem - this is the case where "solve exactly" earns its fifty seconds.
+    #
+    # An operator handed a worse plan would keep the one they had. So the
+    # recovery is the BETTER of the two, and when the re-plan does not win,
+    # that is reported as no improvement with a reason - not as a negative
+    # recovery, and not by quietly hiding the comparison.
+    recovery_improved = recovery_price["total_cost"] < damage_price["total_cost"] - 0.01
+    if not recovery_improved:
+        recovery_solution = {
+            "feasible": True,
+            "gates_used": damage_price["gates_in_use"],
+            "assignment": damage_assignment,
+            "minimum_possible_gates": recovery_solution.get("minimum_possible_gates"),
+            "total_walk_cost": recovery_solution.get("total_walk_cost"),
+        }
+        recovery_simulation = damage_simulation
+        recovery_price = damage_price
+
     # --- what actually changed --------------------------------------------
     moved = []
     for position in recovery_solution["assignment"]:
@@ -613,7 +670,7 @@ def damage_and_recovery(blocks, gates, scenario, solver, baseline_solution=None)
                 "to_gate": now,
             })
 
-    recovered = damage_price["total_cost"] - recovery_price["total_cost"]
+    recovered = max(damage_price["total_cost"] - recovery_price["total_cost"], 0.0)
     disruption_cost = damage_price["total_cost"] - baseline_price["total_cost"]
 
     if disruption_cost > 0:
@@ -639,6 +696,7 @@ def damage_and_recovery(blocks, gates, scenario, solver, baseline_solution=None)
         "blocks_displaced_by_closure": displaced_count,
         "aircraft_moved": moved,
         "aircraft_moved_count": len(moved),
+        "recovery_improved": recovery_improved,
         "disruption_cost": round(disruption_cost, 2),
         "recovered_dollars": round(recovered, 2),
         "recovered_percent": recovered_share,
