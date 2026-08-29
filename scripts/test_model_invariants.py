@@ -42,8 +42,14 @@ from alto import costs, schedule, solver_mcnf, solver_ilp
 PASS, FAIL = [], []
 
 
+CONTEXT = {"date": ""}
+
+
 def check(name, ok, detail=""):
-    (PASS if ok else FAIL).append(name)
+    # The summary carries the measured numbers, not just the check names. A
+    # failure reported without its numbers cannot be diagnosed from a paste.
+    label = CONTEXT["date"] + "  " + name + (("   " + detail) if detail else "")
+    (PASS if ok else FAIL).append(label)
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     return ok
 
@@ -77,6 +83,7 @@ def main():
     dates = every[:args.days]
 
     for date in dates:
+        CONTEXT["date"] = date
         print("\n" + date)
         blocks = schedule.load_day(date)
         base_solution = solver_mcnf.solve(blocks, gates)
@@ -222,6 +229,15 @@ def main():
     print("%d passed, %d FAILED" % (len(PASS), len(FAIL)))
     for name in FAIL:
         print("   FAILED: " + name)
+    if FAIL:
+        print("\nVersions, in case this differs between machines:")
+        import platform
+        print("   python " + platform.python_version())
+        for module in ("pandas", "networkx", "scipy", "numpy", "pulp"):
+            try:
+                print("   %-9s %s" % (module, __import__(module).__version__))
+            except Exception as problem:
+                print("   %-9s could not read (%s)" % (module, problem))
     return 1 if FAIL else 0
 
 
