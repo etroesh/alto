@@ -129,7 +129,7 @@ section:last-of-type { border-bottom: none; }
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: 13px; letter-spacing: .06em;
 }
-.step-head h2 { margin: 0; font-size: 30px; }
+.step-head h2 { margin: 0; font-size: 26px; }
 .step-sub {
   font-style: italic; color: var(--muted);
   margin: 0 0 22px 46px; max-width: 64ch;
@@ -192,33 +192,12 @@ label.checkline input { width: auto; }
 
 /* A section title: small, spaced, in mono, above a heavy rule. The rule does
    the work a card border used to do, without boxing anything in. */
-h2.section-title {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: .18em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin: 0 0 14px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--rule-heavy);
-}
+/* h2.section-title is gone. Small letterspaced capitals over a rule are the
+   loudest "a machine laid this out" signal a page can send. */
 
 .lede { border-bottom: 1px solid var(--rule); }
-.lede .deck {
-  font-size: 30px;
-  font-weight: 600;
-  line-height: 1.25;
-  margin: 6px 0 14px;
-  max-width: 22ch;
-}
-.lede p { max-width: var(--measure); margin: 0 0 12px; color: var(--ink-2); }
-.lede p:last-child { margin-bottom: 0; }
-.lede .byline {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--muted);
-}
+.lede p { max-width: var(--measure); margin: 0 0 12px; font-size: 18px; }
+.lede p:last-child { margin-bottom: 0; color: var(--muted); }
 
 /* The always-visible line under a chart. Italic, like a figure caption in
    print, so it reads as the author talking rather than as interface text. */
@@ -232,46 +211,10 @@ h2.section-title {
 
 /* The "more, if you want it" toggle. A native <details>, so it works with a
    keyboard and a screen reader without a line of JavaScript. */
-details.explain { margin-top: 8px; max-width: var(--measure); }
-details.explain > summary {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: .09em;
-  text-transform: uppercase;
-  color: var(--muted);
-  cursor: pointer;
-  list-style: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 3px 0;
-}
-details.explain > summary::-webkit-details-marker { display: none; }
-details.explain > summary::before {
-  content: "?";
-  display: inline-grid; place-items: center;
-  width: 15px; height: 15px;
-  border: 1px solid var(--muted);
-  border-radius: 50%;
-  font-size: 10px; font-weight: 600; line-height: 1;
-}
-details.explain > summary:hover { color: var(--ink); }
-details.explain > summary:hover::before { border-color: var(--ink); }
-details.explain[open] > summary::before { content: "\00d7"; }
-details.explain p {
-  font-size: 15.5px;
-  color: var(--ink-2);
-  margin: 8px 0 0;
-  padding-left: 22px;
-  border-left: 1px solid var(--rule);
-}
+/* details.explain is gone with the toggles it styled. What is worth
+   explaining now sits behind a question mark, in one or two sentences. */
 
-.status {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 12px;
-  color: var(--muted);
-  margin: 10px 0 0;
-}
+.status { font-size: 15px; color: var(--muted); margin: 12px 0 0; }
 .status.error { color: var(--delayed); }
 
 a { color: var(--ink); }
@@ -297,20 +240,11 @@ a { color: var(--ink); }
 .control > label.checkline input { width: auto; }
 .control > label {
   display: block;
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 10.5px;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--muted);
+  font-size: 16px;
+  color: var(--ink);
   margin-bottom: 7px;
 }
-.control .hint {
-  font-size: 14px;
-  font-style: italic;
-  color: var(--muted);
-  margin-top: 7px;
-  line-height: 1.45;
-}
+.control .hint { font-size: 15px; color: var(--muted); margin-top: 7px; line-height: 1.45; }
 
 input[type="date"], select, input[type="number"] {
   width: 100%;
@@ -326,9 +260,9 @@ input[type="date"], select, input[type="number"] {
 input[type="range"] { width: 100%; accent-color: var(--ink); }
 
 button {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 12px;
-  letter-spacing: .06em;
+  font-family: inherit;
+  font-size: 15px;
+  letter-spacing: 0;
   padding: 8px 14px;
   border: 1px solid var(--ink);
   border-radius: 0;
@@ -341,13 +275,13 @@ button.primary {
   background: var(--ink);
   color: var(--paper);
   padding: 12px 26px;
-  font-size: 13px;
-  letter-spacing: .14em;
-  text-transform: uppercase;
+  font-family: inherit;
+  font-size: 17px;
+  letter-spacing: 0;
 }
 button.primary:hover { background: var(--ink-2); }
 button.primary:disabled { opacity: .4; cursor: default; }
-button.tiny { padding: 3px 9px; font-size: 11px; }
+button.tiny { padding: 4px 10px; font-size: 14px; }
 
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
@@ -355,7 +289,7 @@ button.tiny { padding: 3px 9px; font-size: 11px; }
 
 /* quick picks: the four days worth looking at */
 .quick-picks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
-.quick-picks button { padding: 3px 8px; font-size: 11px; border-color: var(--rule); color: var(--ink-2); }
+.quick-picks button { padding: 4px 10px; font-size: 14px; border-color: var(--rule); color: var(--ink-2); }
 .quick-picks button:hover { border-color: var(--ink); }
 
 .day-facts { margin-top: 14px; font-size: 15px; }
@@ -367,19 +301,12 @@ button.tiny { padding: 3px 9px; font-size: 11px; }
   padding: 3px 0;
 }
 .day-facts .row b {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 13.5px;
+  font-size: 16px;
   color: var(--ink);
-  font-weight: 500;
+  font-weight: 600;
 }
-.day-facts .tag-note {
-  margin-top: 8px;
-  font-style: italic;
-  font-size: 14.5px;
-  color: var(--ink-2);
-  line-height: 1.45;
-}
+.day-facts .tag-note { margin-top: 8px; font-size: 15px; color: var(--ink-2); line-height: 1.45; }
 
 .count {
   font-family: "IBM Plex Mono", ui-monospace, monospace;
@@ -393,8 +320,8 @@ button.tiny { padding: 3px 9px; font-size: 11px; }
 .gate-group-head .name { font-size: 14px; font-weight: 600; }
 .gate-group-head .close-all {
   margin-left: auto;
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 10.5px;
+  font-family: inherit;
+  font-size: 14px;
   background: none; border: none; padding: 0;
   color: var(--muted); cursor: pointer; text-decoration: underline;
 }
@@ -443,12 +370,11 @@ button.info {
   all: unset;
   cursor: help;
   display: inline-grid; place-items: center;
-  width: 15px; height: 15px;
+  width: 16px; height: 16px;
   border-radius: 50%;
-  border: 1px solid var(--muted);
+  border: 1px solid var(--rule);
   color: var(--muted);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 10px; font-weight: 600; line-height: 1;
+  font-size: 11px; line-height: 1;
   vertical-align: middle;
   margin-left: 4px;
 }
@@ -466,7 +392,7 @@ button.info:hover, button.info:focus-visible { border-color: var(--ink); color: 
   font-size: 28px; font-weight: 500;
   line-height: 1;
 }
-.solving-note { font-size: 14px; font-style: italic; color: var(--muted); max-width: 34ch; }
+.solving-note { font-size: 15px; color: var(--muted); max-width: 34ch; }
 .solving.done .solving-clock { color: var(--good); font-size: 20px; }
 
 /* ---- 5. RESULTS --------------------------------------------------------- */
@@ -479,10 +405,7 @@ button.info:hover, button.info:focus-visible { border-color: var(--ink); color: 
 }
 .figure { padding-top: 12px; border-top: 2px solid var(--rule-heavy); }
 .figure .label {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 10.5px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
+  font-size: 15px;
   color: var(--muted);
   margin-bottom: 8px;
   line-height: 1.4;
@@ -499,7 +422,7 @@ button.info:hover, button.info:focus-visible { border-color: var(--ink); color: 
 
 /* Any wide block scrolls inside its own container, so the page never scrolls
    sideways on a phone. */
-.tbl-scroll { overflow-x: auto; }
+.tbl-scroll { overflow-x: auto; margin-top: 28px; }
 .breakdown { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 16px; }
 .breakdown th, .breakdown td {
   text-align: right;
@@ -508,9 +431,8 @@ button.info:hover, button.info:focus-visible { border-color: var(--ink); color: 
 }
 .breakdown th:first-child, .breakdown td:first-child { text-align: left; padding-left: 0; }
 .breakdown th {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--muted); font-weight: 500;
+  font-size: 14px;
+  color: var(--muted); font-weight: 400;
   border-bottom-color: var(--rule-heavy);
 }
 .breakdown td {
@@ -600,7 +522,7 @@ svg.gantt .bar:hover { stroke: var(--ink); stroke-width: 2; }
 .switch button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .switch button[disabled] { color: var(--muted); cursor: default; }
 .switch button[disabled]:hover { background: transparent; color: var(--muted); }
-.chart-view-note { font-style: italic; color: var(--muted); font-size: 15px; }
+.chart-view-note { color: var(--muted); font-size: 15px; }
 
 .tooltip {
   position: fixed;

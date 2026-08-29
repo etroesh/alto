@@ -264,10 +264,11 @@ function drawDayFacts() {
   // The top ten days sit within 1.5% of each other, so "the busiest day" is a
   // near-tie decided by a handful of aircraft. Saying so is more honest than
   // presenting one date as a fact - and it survives the data being improved.
-  if (busierThan === 0) note = "The busiest day of 2023 by aircraft visits - though the top ten days are within 1.5% of each other, all in late July and August.";
-  else if (busierThan < 10) note = (note ? note + " " : "") + "One of the ten busiest days of the year, all of which fall in late July and August and sit within 1.5% of each other.";
-  if (busierThan === days.length - 1) note = (note ? note + " " : "") + "The quietest day of the year — Thanksgiving Day is famously dead in the air; it is the days on either side that are busy.";
-  if (costlierThan === 0) note = (note ? note + " " : "") + "The highest fees of any day in 2023.";
+  // The top ten days sit within 1.5% of each other, so naming one "the
+  // busiest" overstates a four-visit margin. Say which band it is in.
+  if (busierThan < 10) note = (note ? note + " " : "") + "One of the ten busiest days, all in late July and August, all within 1.5% of each other.";
+  if (busierThan === days.length - 1) note = (note ? note + " " : "") + "The quietest day of the year.";
+  if (costlierThan === 0) note = (note ? note + " " : "") + "The highest fees of the year.";
   if (day.gates_used > 57) {
     note = (note ? note + " " : "")
       + "Needs more than Alaska's 57 preferential gates — the overflow is billed per turn as common-use.";
@@ -614,40 +615,33 @@ function verdictFor(result) {
   // What did you actually do? Say that back first, so the number has a cause.
   let cause;
   if (tails.length === 1) {
-    cause = "Delaying <b>" + tails[0] + "</b> by <b>" + state.delays[tails[0]] + " minutes</b>";
+    cause = "Delaying " + tails[0] + " by " + state.delays[tails[0]] + " minutes";
   } else if (tails.length > 1) {
-    cause = "Delaying <b>" + tails.length + " aircraft</b>";
+    cause = "Delaying " + tails.length + " aircraft";
   } else if (closed > 0) {
-    cause = "Closing <b>" + closed + (closed === 1 ? " gate</b>" : " gates</b>");
+    cause = "Closing " + closed + (closed === 1 ? " gate" : " gates");
   } else {
-    cause = "This day, exactly as scheduled,";
+    cause = "This day, as scheduled,";
   }
   if (tails.length > 0 && closed > 0) {
-    cause += " and closing <b>" + closed + (closed === 1 ? " gate</b>" : " gates</b>");
+    cause += " and closing " + closed + (closed === 1 ? " gate" : " gates");
   }
 
   if (result.disruption_cost <= 0) {
-    return cause + " adds nothing — the schedule absorbs it without a single "
-      + "aircraft waiting for a gate, and no fee changes.";
+    return cause + " costs nothing extra. The schedule absorbs it.";
   }
 
   // The re-plan does not always beat the improvised plan. Saying so, with the
   // reason, is more useful than a zero with no explanation.
   if (result.recovery_improved === false) {
-    return cause + " adds <b>" + money(result.disruption_cost) + "</b> to the day's fees — and "
-      + "re-planning found <b>nothing better</b> than improvising. With this many gates shut, "
-      + "the fast solver has to keep each aircraft's whole chain of turns on one stand, which "
-      + "costs more in common-use fees than placing them one at a time. Tick "
-      + "<b>Solve exactly</b> and it usually wins.";
+    return cause + " adds " + money(result.disruption_cost) + " in fees, and re-planning "
+      + "found nothing better than improvising. With this many gates shut the fast solver has "
+      + "to keep each aircraft's whole chain of turns on one stand. Try solving exactly.";
   }
 
-  let text = cause + " adds <b>" + money(result.disruption_cost) + "</b> to the day's fees. "
-    + "Re-planning the whole day's gates gets <b class='up'>" + money(result.recovered_dollars)
-    + "</b> of it back — " + result.recovered_percent + "% — by moving <b>"
-    + result.aircraft_moved_count + "</b> aircraft to different gates";
-  text += result.solver === "integer program"
-    ? ", solved exactly in " + result.seconds + " seconds."
-    : ", in " + result.seconds + " seconds.";
+  let text = cause + " adds " + money(result.disruption_cost) + " in fees. Re-planning the day "
+    + "gets <span class='up'>" + money(result.recovered_dollars) + "</span> of it back, "
+    + result.recovered_percent + "%, by moving " + result.aircraft_moved_count + " aircraft.";
   return text;
 }
 
@@ -657,14 +651,14 @@ function describeScenario() {
   const tails = Object.keys(state.delays);
   const closed = state.closedGates.length;
   const parts = [];
-  if (tails.length === 1) parts.push("<b>" + tails[0] + "</b> " + state.delays[tails[0]] + " min late");
-  else if (tails.length > 1) parts.push("<b>" + tails.length + " aircraft</b> delayed");
-  if (closed > 0) parts.push("<b>" + closed + "</b> gate" + (closed === 1 ? "" : "s") + " closed");
+  if (tails.length === 1) parts.push(tails[0] + " " + state.delays[tails[0]] + " min late");
+  else if (tails.length > 1) parts.push(tails.length + " aircraft delayed");
+  if (closed > 0) parts.push(closed + " gate" + (closed === 1 ? "" : "s") + " closed");
   const element = document.getElementById("scenario-now");
   if (!element) return;
   element.innerHTML = parts.length === 0
-    ? "Nothing changed yet — running now gives you the day as it was scheduled."
-    : parts.join(" · ") + " on " + state.date;
+    ? "Nothing changed yet."
+    : parts.join(", ") + " on " + state.date;
 }
 
 function clearFigures() {
@@ -673,7 +667,7 @@ function clearFigures() {
   });
   document.getElementById("breakdown-body").innerHTML =
     '<tr><td colspan="7" style="color:var(--muted);text-align:left">Run a scenario to fill this in.</td></tr>';
-  setVerdict("Nothing broken yet. Delay an aircraft above, then press Run — it takes about a second.", true);
+  setVerdict("Nothing broken yet.", true);
 }
 
 /* ---- 6. THE GATE GRID --------------------------------------------------- */
@@ -777,8 +771,8 @@ function startClock(isExactSolver) {
   // first time you use it on a new day, because the undisrupted day has to be
   // solved exactly too before there is anything to compare against.
   note.textContent = isExactSolver
-    ? "Running the integer program. Around 20 seconds — up to 50 the first time on a new day. Leave the controls alone until it finishes."
-    : "Working — this takes about a second. Leave the controls alone.";
+    ? "Integer program. Around 20 seconds, up to 50 the first time on a day."
+    : "About a second.";
 
   clock.textContent = "0.0s";
   clearInterval(clockTimer);
@@ -792,8 +786,7 @@ function stopClock(serverSeconds, solverName) {
   const panel = document.getElementById("solving");
   panel.classList.add("done");
   document.getElementById("solving-clock").textContent = serverSeconds + "s";
-  document.getElementById("solving-note").textContent =
-    "Solved by the " + solverName + ". Safe to change things again.";
+  document.getElementById("solving-note").textContent = "Solved by the " + solverName + ".";
 }
 
 function failClock(message) {
@@ -815,8 +808,8 @@ async function loadYear() {
     drawDayFacts();
     const turns = state.yearDays.map(function (d) { return d.turns; });
     setStatus("year-status",
-      "Between " + Math.min.apply(null, turns) + " and " + Math.max.apply(null, turns)
-      + " aircraft visits a day across 2023.");
+      Math.min.apply(null, turns) + " to " + Math.max.apply(null, turns)
+      + " aircraft a day. Click a bar to load one.");
   } catch (error) {
     setStatus("year-status", "Could not load the year summary: " + error.message, true);
   }
@@ -854,10 +847,9 @@ async function loadDay() {
     }).join("");
 
     setStatus("chart-status",
-      day.blocks.length + " gate blocks · " + day.gates_used + " gates used of "
-      + day.gates_available + " available · the theoretical minimum for this day is "
-      + day.minimum_possible_gates + scrollHint());
-    document.getElementById("chart-title").textContent = "Gate occupancy · " + state.date;
+      day.gates_used + " gates for " + day.blocks.length + " visits. "
+      + "No plan can use fewer than " + day.minimum_possible_gates + "." + scrollHint());
+    document.getElementById("chart-title").textContent = "Gate by gate · " + state.date;
     drawYearStrip(state.yearDays);
     drawDayFacts();
     announce("Loaded " + state.date + ", " + day.gates_used + " gates used.");
@@ -870,7 +862,7 @@ async function runScenario() {
   const button = document.getElementById("run");
   button.disabled = true;
   button.textContent = "Solving…";
-  setVerdict("Working — re-solving the whole day's gate plan…", true);
+  setVerdict("Working…", true);
   startClock(state.useExactSolver);
   setStatus("chart-status", "Running the scenario…");
 
@@ -891,10 +883,8 @@ async function runScenario() {
     if (results) results.scrollIntoView({ behavior: "smooth", block: "start" });
 
     setStatus("chart-status",
-      "Solved with the " + result.solver + " in " + result.seconds + "s · "
-      + result.aircraft_moved_count + " aircraft moved · "
-      + result.gates_used_recovery + " gates used of " + result.gates_available
-      + " available" + scrollHint());
+      result.gates_used_recovery + " gates, " + result.aircraft_moved_count
+      + " aircraft moved, " + result.seconds + "s." + scrollHint());
     stopClock(result.seconds, result.solver);
     announce("Scenario solved in " + result.seconds + " seconds. "
       + result.recovered_percent + " percent of the disruption recovered.");
