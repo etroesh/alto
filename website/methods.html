@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
-<link rel="stylesheet" href="style.css?v=1788108346">
+<link rel="stylesheet" href="style.css?v=1788110083">
 <style>
   /* The methods page is the same paper as the model page, set as a long-form
      document: one narrow reading column, hairline rules, no boxes. */
@@ -99,7 +99,6 @@
   <a href="#cost">6 · The cost model</a>
   <a href="#disruption">7 · What a disruption costs</a>
   <a href="#limits">8 · What this cannot tell you</a>
-  <a href="#serving">9 · Keeping it running</a>
 </div>
 
 <!-- 1 -->
@@ -234,7 +233,13 @@ out[i] → SINK&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;i is last on its gate&nbsp;&nbsp;&n
 SINK → SOURCE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;the return pipe, whose flow is the gate count
 </div>
 <p>It receives one unit through its front door and sends another unit through its rear door, thus making sure that the output forms clean chains without overlap. The Hungarian method matches these chains to specific gates in accordance with criteria such as common use fee, number of airplanes to be re-routed, and finally the walk.</p>
-<p>The ten-minute buffer time between successive airplanes assigned to a gate is used consistently for the conflict resolution algorithm, the flow problem formulation and peak demand computation. Using varying buffers in various locations will render the comparison meaningless.</p>
+<h3>Actually solving it</h3>
+<p>The integer program is built with PuLP and solved with the bundled CBC solver. Both goals, fewest gates then least walking, are folded into one objective by pricing a gate above the total walking cost the whole day could possibly run up, so no amount of walking ever buys an extra gate. A common-use turn is priced above that again, at the gate price times the block count, because the first version priced it too low and the solver spent a real $552.89 fee to save a gate that costs nothing at all, six extra common-use turns to save one gate, and reported the result as a $21,010 improvement.</p>
+<p>Rule 2, blocks on the ground together cannot share a gate, is written as one constraint per group of mutually overlapping blocks rather than one per pair: 125 groups instead of 4,398 pairs on 15 July. Symmetry breaking, forcing gate 1 to open before gate 2 and so on, is the single biggest speed-up in the file. Without it every gate looks the same to the solver, so a plan using gates 1 through 29 and a plan using gates 2 through 30 are identical in value, and it burns enormous effort proving thousands of such relabellings are all equally good. CBC gets 150 seconds, not 300, because nginx times out a request at 180 and a solver allowed to run longer than the proxy waits just hands the slowest days back to a visitor as an error page.</p>
+
+<h3>The flow network and the Hungarian algorithm</h3>
+<p>The fast solver thinks in chains, not gates. NetworkX builds a graph with two nodes per block, a front door and a back door: SOURCE feeds the front door of any block starting a new chain, and the back door either feeds SINK, ending the chain, or the front door of whatever block follows it on the same gate. A return pipe from SINK back to SOURCE is what lets the solver decide how many chains to open at all. Wiring the source to instead send one unit per block forces every block into its own chain, and once reported 289 gates needed for a 29-gate day. Idle minutes between two linked blocks become the cost of that edge, scaled by ten so a half-minute tie-break survives networkx's whole-number weights, and a link that matches the previous plan gets a tenth of a minute knocked off it, enough to make the solver prefer it without changing which plan is optimal.</p>
+<p>Flow only produces chains, not gate names, since it treats every gate as interchangeable. Naming them is a separate problem, solved exactly by the Hungarian algorithm, scipy's <code>linear_sum_assignment</code>, on a cost matrix of walking distance plus common-use fee plus a penalty for moving an aircraft off the gate it already had. That penalty used to be 1000, set back when walking was the only other term in the matrix. Once the common-use fee was added it kept outranking the real $552.89 fee, so the solver would rather pay an actual invoice than shuffle a plane between two gates, and the re-plan came out worse than doing nothing on six of ten days sampled. It is 50 now, above the worst walking cost per block of 7.6 and below what a common-use turn actually costs.</p>
 
 <!-- 5 -->
 <h2 id="validation">5 · Validation</h2>
@@ -304,17 +309,6 @@ SINK → SOURCE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;the return pipe, whose flow is the 
 <p>The list of gates is a modeling assumption. The airport has 67 preferential use gates according to its current airline agreement and Concourse C and the North Satellite belong to Alaska Airlines. The list of gates and the walking cost coefficients are derived from the publicly available terminal map.</p>
 <p>The 2023 flights are priced using the 2025 rates. The rates and the agreement are up to date while the flights are two years old, however that is fine since they are used only for relative comparison.</p>
 <p>Disruption costs do not include passenger time value, which is about $47 per hour according to A4A. It will definitely increase disruption costs if included.</p>
-
-<!-- 9 -->
-<h2 id="serving">9 · Keeping it running</h2>
-<p class="lead">The model itself solves in under a second. Keeping it answering all day on a shared machine turned out to be its own problem.</p>
-
-<h3>The cache that grew past its own ceiling</h3>
-<p>Solving a day and caching its baseline costs about half a second, so every scenario reuses it instead of resolving it. An unbounded cache is dangerous here: measured, memory climbed from 140 MB at start to 641 MB after 120 days cached, on a 1 GB machine shared with another live site. The first fix set a flat limit of eight days, sized against a comment claiming that came to about 260 MB resident. Nobody checked that figure against the systemd unit's own ceiling of 220 MB, so the service was configured to grow straight through its own limit.</p>
-<p>Crossing that ceiling did not crash the process. The kernel throttled it into constant reclaim instead, so it stayed "active (running)" in every health check while it quietly stopped answering, which is worse than a crash, since nothing restarts a service that looks healthy. The fix reads the real limit out of the process's own cgroup at startup and evicts the oldest cached day once memory gets close to it, with the eight-day count now only a second line of defence.</p>
-
-<h3>One exact solve at a time</h3>
-<p>The integer program is heavier, about 50 MB while it runs, measured. FastAPI runs each request in a thread pool, so two visitors clicking "solve exactly" together really do solve at once, and two of them together clear the memory ceiling. A lock queues them: the second visitor waits a few seconds, which costs less than the service going down for everyone. The network flow solver is untouched by this, since it is a second's work and light enough to run freely.</p>
 
 <h2>Sources</h2>
 <ul>
