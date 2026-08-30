@@ -25,6 +25,8 @@ _to_delete/
 # macOS
 .DS_Store
 
-# Working notes, never public
-CLAUDE.md
-.claude/
+# Working/ops material, never public
+docs/
+archive/
+notebooks/
+deploy/
