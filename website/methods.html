@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
-<link rel="stylesheet" href="style.css?v=1788107041">
+<link rel="stylesheet" href="style.css?v=1788108346">
 <style>
   /* The methods page is the same paper as the model page, set as a long-form
      document: one narrow reading column, hairline rules, no boxes. */
@@ -99,6 +99,7 @@
   <a href="#cost">6 · The cost model</a>
   <a href="#disruption">7 · What a disruption costs</a>
   <a href="#limits">8 · What this cannot tell you</a>
+  <a href="#serving">9 · Keeping it running</a>
 </div>
 
 <!-- 1 -->
@@ -303,6 +304,17 @@ SINK → SOURCE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;the return pipe, whose flow is the 
 <p>The list of gates is a modeling assumption. The airport has 67 preferential use gates according to its current airline agreement and Concourse C and the North Satellite belong to Alaska Airlines. The list of gates and the walking cost coefficients are derived from the publicly available terminal map.</p>
 <p>The 2023 flights are priced using the 2025 rates. The rates and the agreement are up to date while the flights are two years old, however that is fine since they are used only for relative comparison.</p>
 <p>Disruption costs do not include passenger time value, which is about $47 per hour according to A4A. It will definitely increase disruption costs if included.</p>
+
+<!-- 9 -->
+<h2 id="serving">9 · Keeping it running</h2>
+<p class="lead">The model itself solves in under a second. Keeping it answering all day on a shared machine turned out to be its own problem.</p>
+
+<h3>The cache that grew past its own ceiling</h3>
+<p>Solving a day and caching its baseline costs about half a second, so every scenario reuses it instead of resolving it. An unbounded cache is dangerous here: measured, memory climbed from 140 MB at start to 641 MB after 120 days cached, on a 1 GB machine shared with another live site. The first fix set a flat limit of eight days, sized against a comment claiming that came to about 260 MB resident. Nobody checked that figure against the systemd unit's own ceiling of 220 MB, so the service was configured to grow straight through its own limit.</p>
+<p>Crossing that ceiling did not crash the process. The kernel throttled it into constant reclaim instead, so it stayed "active (running)" in every health check while it quietly stopped answering, which is worse than a crash, since nothing restarts a service that looks healthy. The fix reads the real limit out of the process's own cgroup at startup and evicts the oldest cached day once memory gets close to it, with the eight-day count now only a second line of defence.</p>
+
+<h3>One exact solve at a time</h3>
+<p>The integer program is heavier, about 50 MB while it runs, measured. FastAPI runs each request in a thread pool, so two visitors clicking "solve exactly" together really do solve at once, and two of them together clear the memory ceiling. A lock queues them: the second visitor waits a few seconds, which costs less than the service going down for everyone. The network flow solver is untouched by this, since it is a second's work and light enough to run freely.</p>
 
 <h2>Sources</h2>
 <ul>
