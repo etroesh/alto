@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
-<link rel="stylesheet" href="style.css?v=1788111685">
+<link rel="stylesheet" href="style.css?v=1788113256">
 <style>
   /* The methods page is the same paper as the model page, set as a long-form
      document: one narrow reading column, hairline rules, no boxes. */
@@ -397,6 +397,9 @@ chain_rows, gate_columns = linear_sum_assignment(cost_matrix)</pre>
 <p>The list of gates is a modeling assumption. The airport has 67 preferential use gates according to its current airline agreement and Concourse C and the North Satellite belong to Alaska Airlines. The list of gates and the walking cost coefficients are derived from the publicly available terminal map.</p>
 <p>The 2023 flights are priced using the 2025 rates. The rates and the agreement are up to date while the flights are two years old, however that is fine since they are used only for relative comparison.</p>
 <p>Disruption costs do not include passenger time value, which is about $47 per hour according to A4A. It will definitely increase disruption costs if included.</p>
+
+<h2 id="built">A note on how this was built</h2>
+<p>The model, the formulation and the theory on this page are mine. I used AI to help build it, mainly the website and the engineering around it, and to make it more robust than what I had built on my own.</p>
 
 <h2>Sources</h2>
 <ul>
