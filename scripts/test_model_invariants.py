@@ -167,6 +167,45 @@ def main():
                   result["recovered_dollars"] >= -0.01,
                   "recovered %.2f" % result["recovered_dollars"])
 
+        # 8a. The answer must not depend on the order the rows arrive in.
+        #
+        #     This is the check that would have caught the worst bug in the
+        #     file's history. The solver's plan was keyed by row position, and
+        #     apply_delays re-sorted with a non-stable sort, so on a machine
+        #     whose pandas broke ties differently the baseline got priced with
+        #     every gate attached to the wrong aircraft. An undisturbed day
+        #     came out at minus $2,460. It passed on the machine it was
+        #     written on and failed on the machine it was run on.
+        #     The same PLAN is handed to both runs, so this measures how the
+        #     pipeline handles row order and nothing else. Re-solving the
+        #     shuffled frame instead would also let the solver pick a
+        #     different but equally good plan, and the check could not tell
+        #     the two apart.
+        gate_of = {}
+        for position in base_solution["assignment"]:
+            gate_of[blocks.loc[position, "block_id"]] = base_solution["assignment"][position]
+
+        shuffled = blocks.sample(frac=1.0, random_state=7).reset_index(drop=True)
+        shuffled_solution = dict(base_solution)
+        shuffled_solution["assignment"] = {
+            position: gate_of[shuffled.loc[position, "block_id"]]
+            for position in range(len(shuffled))
+            if shuffled.loc[position, "block_id"] in gate_of
+        }
+
+        straight = run(blocks, gates, date, delays={tails[0]: 60}, baseline=base_solution)
+        jumbled = run(shuffled, gates, date, delays={tails[0]: 60}, baseline=shuffled_solution)
+        check("row order does not change the priced answer",
+              abs(straight["damage"]["total_cost"] - jumbled["damage"]["total_cost"]) < 0.01,
+              "%.2f vs %.2f" % (straight["damage"]["total_cost"],
+                                jumbled["damage"]["total_cost"]))
+
+        #     And solving the same day twice must give the same plan.
+        again = solver_mcnf.solve(blocks, gates)
+        check("solving the same day twice gives the same plan",
+              again["assignment"] == base_solution["assignment"],
+              "gates %d vs %d" % (again["gates_used"], base_solution["gates_used"]))
+
         # 8b. The severe-closure case, which is where this broke in public:
         #     39 gates shut leaves 18 leased stands, so most turns have to go
         #     to common-use. Reported on screen as recovering minus $38,011.

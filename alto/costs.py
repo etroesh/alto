@@ -487,9 +487,31 @@ def damage_and_recovery(blocks, gates, scenario, solver, baseline_solution=None)
         return {"feasible": False, "stage": "baseline",
                 "reason": baseline_solution.get("reason")}
 
+    # The solver's assignment is keyed by position in the ORIGINAL block order,
+    # and apply_delays returns its own order. Those two agreed by luck rather
+    # than by construction, and on a machine whose pandas broke ties
+    # differently they stopped agreeing: the baseline was priced with each
+    # gate attached to the wrong aircraft, which made it look more expensive
+    # than the damage run and produced a NEGATIVE disruption cost on a day
+    # where nothing had been disrupted at all.
+    #
+    # Block id is the one identifier that survives a re-sort, so the plan is
+    # carried across on that, the same way the damage run already did it.
+    gate_by_block_id = {}
+    for position in baseline_solution["assignment"]:
+        block_id = blocks.loc[position, "block_id"]
+        gate_by_block_id[block_id] = baseline_solution["assignment"][position]
+
     baseline_blocks = scenarios.apply_delays(blocks, {})
-    baseline_simulation = simulate(baseline_blocks, baseline_solution["assignment"], costs)
-    baseline_price = price(baseline_blocks, baseline_solution["assignment"],
+    baseline_assignment = {}
+    for position in range(len(baseline_blocks)):
+        block_id = baseline_blocks.loc[position, "block_id"]
+        gate = gate_by_block_id.get(block_id)
+        if gate is not None:
+            baseline_assignment[position] = gate
+
+    baseline_simulation = simulate(baseline_blocks, baseline_assignment, costs)
+    baseline_price = price(baseline_blocks, baseline_assignment,
                            baseline_simulation, costs)
 
     # --- damage: same plan, disrupted day ---------------------------------
@@ -497,10 +519,6 @@ def damage_and_recovery(blocks, gates, scenario, solver, baseline_solution=None)
     # order. apply_delays re-sorts by the new times, so positions move. We
     # follow block_id, which never changes, to carry the plan across.
     disrupted_blocks = scenarios.apply_delays(blocks, scenario.get("delays", {}))
-    gate_by_block_id = {}
-    for position in baseline_solution["assignment"]:
-        block_id = blocks.loc[position, "block_id"]
-        gate_by_block_id[block_id] = baseline_solution["assignment"][position]
 
     stubborn_assignment = {}
     for position in range(len(disrupted_blocks)):

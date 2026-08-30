@@ -87,7 +87,18 @@ def apply_delays(blocks, delays):
     disrupted["scheduled_start"] = list(blocks["start_minute"])
     disrupted["scheduled_end"] = list(blocks["end_minute"])
 
-    return disrupted.sort_values("start_minute").reset_index(drop=True)
+    # Sorted by start minute AND block id, with a stable sort.
+    #
+    # pandas defaults to quicksort, which is not stable, so blocks sharing a
+    # start minute could come back in a different order on a different
+    # machine. That is exactly what happened: the same day, the same data and
+    # the same code produced a disruption cost of zero on one machine and
+    # minus $2,460 on another, because the row order underneath the plan had
+    # moved. Block id breaks every tie, so the order is now the same
+    # everywhere and does not depend on the sort's internals.
+    return (disrupted
+            .sort_values(["start_minute", "block_id"], kind="mergesort")
+            .reset_index(drop=True))
 
 
 # ===========================================================================

@@ -53,7 +53,7 @@ def load_day(date_string, database_path=None):
         FROM gate_blocks b
         JOIN turns t ON t.turn_id = b.turn_id
         WHERE b.arrival_date = ?
-        ORDER BY b.start_minute
+        ORDER BY b.start_minute, b.block_id
     """
     blocks = pd.read_sql(query, connection, params=[date_string])
     connection.close()
