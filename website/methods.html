@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
-<link rel="stylesheet" href="style.css?v=1788110083">
+<link rel="stylesheet" href="style.css?v=1788110432">
 <style>
   /* The methods page is the same paper as the model page, set as a long-form
      document: one narrow reading column, hairline rules, no boxes. */
@@ -54,6 +54,17 @@
     overflow-x: auto; white-space: nowrap;
   }
   .doc .tbl-scroll { overflow-x: auto; }
+  .doc .code-src {
+    font-size: 13px; color: var(--muted); margin: 20px 0 6px;
+  }
+  .doc .code-src a { color: var(--muted); }
+  .doc pre.code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px; line-height: 1.6;
+    background: var(--paper-2);
+    padding: 16px 20px; margin: 0 0 20px;
+    overflow-x: auto; white-space: pre;
+  }
   .doc a { color: var(--ink); text-decoration-color: var(--rule); text-underline-offset: 3px; }
   .doc a:hover { text-decoration-color: var(--ink); }
   .toc {
@@ -235,11 +246,88 @@ SINK → SOURCE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;the return pipe, whose flow is the 
 <p>It receives one unit through its front door and sends another unit through its rear door, thus making sure that the output forms clean chains without overlap. The Hungarian method matches these chains to specific gates in accordance with criteria such as common use fee, number of airplanes to be re-routed, and finally the walk.</p>
 <h3>Actually solving it</h3>
 <p>The integer program is built with PuLP and solved with the bundled CBC solver. Both goals, fewest gates then least walking, are folded into one objective by pricing a gate above the total walking cost the whole day could possibly run up, so no amount of walking ever buys an extra gate. A common-use turn is priced above that again, at the gate price times the block count, because the first version priced it too low and the solver spent a real $552.89 fee to save a gate that costs nothing at all, six extra common-use turns to save one gate, and reported the result as a $21,010 improvement.</p>
+<p class="code-src">From <a href="https://github.com/etroesh/alto/blob/main/alto/solver_ilp.py">solver_ilp.py</a>:</p>
+<pre class="code">worst_possible_walk = len(blocks) * max(walk_cost.values())
+gate_price = worst_possible_walk + 1
+
+gates_term = pulp.lpSum(y[g] for g in gate_ids) * gate_price
+walk_term = pulp.lpSum(
+    x[b][g] * walk_cost[g] for b in block_positions for g in gate_ids
+)
+
+common_use_price = gate_price * len(blocks)
+common_use_term = pulp.lpSum(
+    x[b][g] for b in block_positions for g in gate_ids if str(g).startswith("S")
+) * common_use_price
+
+problem += common_use_term + gates_term + walk_term</pre>
 <p>Rule 2, blocks on the ground together cannot share a gate, is written as one constraint per group of mutually overlapping blocks rather than one per pair: 125 groups instead of 4,398 pairs on 15 July. Symmetry breaking, forcing gate 1 to open before gate 2 and so on, is the single biggest speed-up in the file. Without it every gate looks the same to the solver, so a plan using gates 1 through 29 and a plan using gates 2 through 30 are identical in value, and it burns enormous effort proving thousands of such relabellings are all equally good. CBC gets 150 seconds, not 300, because nginx times out a request at 180 and a solver allowed to run longer than the proxy waits just hands the slowest days back to a visitor as an error page.</p>
+<p class="code-src">From <a href="https://github.com/etroesh/alto/blob/main/alto/solver_ilp.py">solver_ilp.py</a>:</p>
+<pre class="code">groups = schedule.overlap_groups(blocks)
+for group in groups:
+    for g in gate_ids:
+        problem += pulp.lpSum(x[b][g] for b in group) &lt;= y[g]
+
+for position in range(len(gate_ids) - 1):
+    problem += y[gate_ids[position]] &gt;= y[gate_ids[position + 1]]</pre>
 
 <h3>The flow network and the Hungarian algorithm</h3>
 <p>The fast solver thinks in chains, not gates. NetworkX builds a graph with two nodes per block, a front door and a back door: SOURCE feeds the front door of any block starting a new chain, and the back door either feeds SINK, ending the chain, or the front door of whatever block follows it on the same gate. A return pipe from SINK back to SOURCE is what lets the solver decide how many chains to open at all. Wiring the source to instead send one unit per block forces every block into its own chain, and once reported 289 gates needed for a 29-gate day. Idle minutes between two linked blocks become the cost of that edge, scaled by ten so a half-minute tie-break survives networkx's whole-number weights, and a link that matches the previous plan gets a tenth of a minute knocked off it, enough to make the solver prefer it without changing which plan is optimal.</p>
+<p class="code-src">From <a href="https://github.com/etroesh/alto/blob/main/alto/solver_mcnf.py">solver_mcnf.py</a>:</p>
+<pre class="code">network.add_edge(SINK, SOURCE, capacity=block_count, weight=0)
+
+for position in range(block_count):
+    network.add_node(("in", position), demand=1)
+    network.add_node(("out", position), demand=-1)
+
+    network.add_edge(
+        SOURCE, ("in", position),
+        capacity=1,
+        weight=config.GATE_OPENING_PRIORITY_COST * WEIGHT_SCALE,
+    )
+    network.add_edge(("out", position), SINK, capacity=1, weight=0)
+
+for earlier in range(block_count):
+    for later in range(block_count):
+        if earlier == later:
+            continue
+        if not schedule.can_follow(ends[earlier], starts[later]):
+            continue
+
+        idle_minutes = starts[later] - ends[earlier] - config.MIN_GATE_BUFFER_MINUTES
+        weight = int(idle_minutes) * WEIGHT_SCALE
+        if (earlier, later) in previous_links:
+            weight = weight - STICKINESS_BONUS
+
+        network.add_edge(
+            ("out", earlier), ("in", later),
+            capacity=1,
+            weight=weight,
+        )</pre>
 <p>Flow only produces chains, not gate names, since it treats every gate as interchangeable. Naming them is a separate problem, solved exactly by the Hungarian algorithm, scipy's <code>linear_sum_assignment</code>, on a cost matrix of walking distance plus common-use fee plus a penalty for moving an aircraft off the gate it already had. That penalty used to be 1000, set back when walking was the only other term in the matrix. Once the common-use fee was added it kept outranking the real $552.89 fee, so the solver would rather pay an actual invoice than shuffle a plane between two gates, and the re-plan came out worse than doing nothing on six of ten days sampled. It is 50 now, above the worst walking cost per block of 7.6 and below what a common-use turn actually costs.</p>
+<p class="code-src">From <a href="https://github.com/etroesh/alto/blob/main/alto/solver_mcnf.py">solver_mcnf.py</a>:</p>
+<pre class="code">MOVE_PENALTY = 50.0
+
+cost_matrix = np.zeros((len(chains), len(gate_ids)))
+
+for chain_index, chain in enumerate(chains):
+    for gate_index, gate_id in enumerate(gate_ids):
+        walking = len(chain) * walk_costs[gate_index]
+        fees = len(chain) * common_use_fee[gate_index]
+
+        if previous_assignment is None:
+            cost_matrix[chain_index][gate_index] = walking + fees
+            continue
+
+        moves = 0
+        for position in chain:
+            was_at = previous_assignment.get(position)
+            if was_at is not None and was_at != gate_id:
+                moves = moves + 1
+
+        cost_matrix[chain_index][gate_index] = fees + moves * MOVE_PENALTY + walking
+
+chain_rows, gate_columns = linear_sum_assignment(cost_matrix)</pre>
 
 <!-- 5 -->
 <h2 id="validation">5 · Validation</h2>
