@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
-<link rel="stylesheet" href="style.css?v=1788114027">
+<link rel="stylesheet" href="style.css?v=1788650109">
 </head>
 <body>
 
@@ -23,6 +23,11 @@
 </header>
 
 <article>
+
+  <section class="origin">
+    <p class="build-note">A note on how this got built: I'm an IEOR junior, not a software engineer &mdash; I don't write Python day to day. I made every modeling decision here myself and traced every number by hand; Claude wrote most of the code from those decisions, and caught real mistakes along the way (the towing rule below was wrong for a week, until I asked the right question about it). Saying that up front because I'd rather you know than wonder. The full account, mistakes included, is on the <a href="methods.html">Methods page</a>.</p>
+    <p>Why airports. I wrote my college essay about a spreadsheet and I still watch the Excel World Championship &mdash; a clean system doing its job well is just satisfying to watch, and I've spent college chasing that feeling wherever I could find it: running operations for Berkeley's Formula racing team, running a few small ventures of my own, and now here. An airport is that same problem at a scale that actually matters &mdash; 220 aircraft a day sharing 73 gates, and every minute one of them sits somewhere it shouldn't is a real cost somebody eats. I want to run operations at an airline, ideally Alaska, out of the Pacific Northwest. Before I ask anyone to trust me with that, I wanted to know I could actually think like the job. This is that proof.</p>
+  </section>
 
   <section class="lede">
     <p>Alaska runs about 220 aircraft a day through Seattle, and every one of them needs a gate. I took a year of flight data and built a model that plans the gates for a whole day, then re-plans them when something goes wrong.</p>
@@ -197,6 +202,6 @@
 
 <div class="tooltip hidden" id="tooltip"></div>
 
-<script src="app.js?v=1788114027"></script>
+<script src="app.js?v=1788650109"></script>
 </body>
 </html>
