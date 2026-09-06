@@ -200,19 +200,15 @@ label.checkline input { width: auto; }
 .lede p { max-width: var(--measure); margin: 0 0 12px; font-size: 18px; }
 .lede p:last-child { margin-bottom: 0; color: var(--muted); }
 
-/* The origin section: the human story above the technical one. Same measure
-   and rhythm as .lede, so it reads as one voice rather than a bolted-on
-   banner. The build note goes first and is set off in italic, the way
-   .caption reads as the author talking rather than as interface text. */
-.origin { border-bottom: 1px solid var(--rule); padding-bottom: 4px; }
-.origin p { max-width: var(--measure); font-size: 18px; line-height: 1.55; margin: 0 0 14px; }
-.origin p:last-child { margin-bottom: 22px; }
-.origin .build-note {
-  font-style: italic; font-size: 15px; color: var(--ink-2);
-  line-height: 1.5; margin: 0 0 20px;
+/* The closing footnote: a quiet aside after the tool, not a headline. Set
+   like .caption below, so it reads as the author talking rather than as
+   interface text. */
+.footnote p {
+  font-style: italic; font-size: 15px; color: var(--muted);
+  max-width: var(--measure); line-height: 1.5; margin: 0;
 }
-.origin .build-note a { color: var(--ink-2); text-decoration-color: var(--rule); text-underline-offset: 3px; }
-.origin .build-note a:hover { text-decoration-color: var(--ink); }
+.footnote a { color: var(--muted); text-decoration-color: var(--rule); text-underline-offset: 3px; }
+.footnote a:hover { text-decoration-color: var(--ink); }
 
 /* The always-visible line under a chart. Italic, like a figure caption in
    print, so it reads as the author talking rather than as interface text. */
