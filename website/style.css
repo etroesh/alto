@@ -204,7 +204,7 @@ label.checkline input { width: auto; }
    like .caption below, so it reads as the author talking rather than as
    interface text. */
 .footnote p {
-  font-style: italic; font-size: 15px; color: var(--muted);
+  font-style: italic; font-size: 13px; color: var(--muted);
   max-width: var(--measure); line-height: 1.5; margin: 0;
 }
 .footnote a { color: var(--muted); text-decoration-color: var(--rule); text-underline-offset: 3px; }
