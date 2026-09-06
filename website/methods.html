@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
-<link rel="stylesheet" href="style.css?v=1788652894">
+<link rel="stylesheet" href="style.css?v=1788654698">
 <style>
   /* The methods page is the same paper as the model page, set as a long-form
      document: one narrow reading column, hairline rules, no boxes. */
@@ -78,20 +78,6 @@
   }
   .toc a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
   .masthead .tagline { font-style: italic; font-size: 17px; color: var(--ink-2); }
-  /* The prologue: the human story and the build note, ahead of the numbered
-     sections. Closed off with the same heavy rule a numbered h2 sits under,
-     so it reads as a real part of the document, not a banner bolted on top. */
-  .prologue { padding-bottom: 8px; margin-bottom: 8px; border-bottom: 2px solid var(--rule-heavy); }
-  .prologue .kicker {
-    font-weight: 600; font-size: 22px; letter-spacing: -.005em;
-    margin: 0 0 10px;
-  }
-  .prologue .kicker:not(:first-child) { margin-top: 36px; }
-  .prologue p:not(.kicker) {
-    font-size: 18px; line-height: 1.6; color: var(--ink-2);
-    max-width: 62ch; margin: 0 0 14px;
-  }
-  .prologue p:not(.kicker):last-child { margin-bottom: 0; }
   @media (max-width: 900px) {
     .doc { padding: 26px 18px 80px; }
     .doc h2 { font-size: 23px; margin-top: 46px; }
@@ -113,15 +99,14 @@
 
 <div class="doc">
 
-<section class="prologue">
-  <p class="kicker">Why aviation.</p>
-  <p>I'm a systems person. I like it when there's a real process behind something, and I like being the one who builds it. Something like a hundred thousand flights take off every day around the world, and almost everyone on one experiences the same quiet trick: you show up, hand over a bag, sit down, and a few hours later you're somewhere else. You never think about what had to go right. A gate had to be open. A crew had to still be legal to fly. A bag had to make a connection with nine minutes to spare. Weather three states away had to already be worked around before it became your problem. None of that is visible from seat 14C. Invisible means it worked.</p>
-  <p>That's the part I want to be part of. A huge, complicated system runs underneath that seat, kept running by thousands of people whose names never make the announcement. I picked gates and turns to prove myself on here because it's a problem I could actually get my hands on with public data, not because the pull stops at gates. The same instinct applies anywhere an airline has to find the real best answer instead of the answer it has always used, whether that's pricing a route, staffing a hub, or deciding which market to grow next. Ops is where I'd start, since it's closest to what I can already see and measure. I don't want to limit myself to only that. ALTO is me proving I can think this way for real, with real data, wherever an airline needs it.</p>
+<h2>Why aviation</h2>
+<p>I'm a systems person. I like it when there's a real process behind something, and I like being the one who builds it. Something like a hundred thousand flights take off every day around the world, and almost everyone on one experiences the same quiet trick: you show up, hand over a bag, sit down, and a few hours later you're somewhere else. You never think about what had to go right. A gate had to be open. A crew had to still be legal to fly. A bag had to make a connection with nine minutes to spare. Weather three states away had to already be worked around before it became your problem. None of that is visible from seat 14C. Invisible means it worked.</p>
+<p>That's the part I want to be part of. A huge, complicated system runs underneath that seat, kept running by thousands of people whose names never make the announcement. I picked gates and turns to prove myself on here because it's a problem I could actually get my hands on with public data, not because the pull stops at gates. The same instinct applies anywhere an airline has to find the real best answer instead of the answer it has always used, whether that's pricing a route, staffing a hub, or deciding which market to grow next. Ops is where I'd start, since it's closest to what I can already see and measure. I don't want to limit myself to only that. ALTO is me proving I can think this way for real, with real data, wherever an airline needs it.</p>
 
-  <p class="kicker">A note on how this was built.</p>
-  <p>I'm an IEOR major. I don't write Python day to day, and Claude wrote every line of code on this site. What's mine is everything that fed into it. I built the model, worked out the constraints and the objectives, and figured out where it was wrong and how to fix it. I decided on sequential pairing over a join. I decided on a capacity-driven tow rule over a duration cutoff. I decided what a disruption should charge for and what it shouldn't.</p>
-  <p>Claude took that and turned it into something better than what I'd built alone: an interactive site that's more dynamic, and accessible to more than just me. It also runs faster and more efficiently than my own version did.</p>
-</section>
+<h2>A note on how this was built</h2>
+<p>I'm an IEOR major. I don't write Python day to day, and Claude wrote every line of code on this site. What's mine is the model itself: the constraints, the objectives, figuring out where it was wrong and how to fix it. I decided on sequential pairing over a join. I decided on a capacity-driven tow rule over a duration cutoff. I decided what a disruption should charge for and what it shouldn't.</p>
+<p>The writing on this page is mine too, and everything that fed into it: an actual account of my thought process, the roadblocks, the mistakes, and everything else. Claude wrote the code — the interactive website, the API, and the backend pieces that got complicated enough that doing them alone would have taken a lot longer.</p>
+<p>Claude took what I built and turned it into something better than what I'd made alone: an interactive site that's more dynamic, and accessible to more than just me. It also runs faster and more efficiently than my own version did.</p>
 
 <p class="lead">ALTO assigns Alaska's daily aircraft turns at Seattle&#8209;Tacoma to gates, prices what a disruption costs, and measures how much of that re-planning gets back. This page covers where the data came from, how the model is put together, the mistakes I made building it, and what it cannot tell you.</p>
 

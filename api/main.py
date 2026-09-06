@@ -134,6 +134,37 @@ _gates_cache = None
 # service. The network flow is untouched: it is a second's work and runs freely.
 _exact_solve_lock = threading.Lock()
 
+# How long a request will wait for the lock above before giving up. Set
+# below the 180-second nginx ceiling so a request that can't get the lock in
+# time fails with a clear message of its own, rather than sitting behind
+# whatever's holding it until nginx kills the connection anyway. This is a
+# backstop, not the fix for slow solves - see DEFAULT_TIME_LIMIT_SECONDS in
+# solver_ilp.py for that. It exists so that if a solve DOES somehow run long
+# (a CBC hang, a busy neighbour), everyone waiting behind it gets a fast,
+# honest error instead of the whole exact-solve feature going silently dark.
+EXACT_SOLVE_LOCK_TIMEOUT_SECONDS = 150
+
+
+@contextlib.contextmanager
+def _exact_solve_guard():
+    """Hold the exact-solve lock, or fail loudly instead of hanging.
+
+    A plain `with _exact_solve_lock:` blocks forever if whatever's holding it
+    never lets go - which is exactly how one slow request used to take the
+    whole site down with it. This times out instead.
+    """
+    acquired = _exact_solve_lock.acquire(timeout=EXACT_SOLVE_LOCK_TIMEOUT_SECONDS)
+    if not acquired:
+        raise HTTPException(
+            status_code=503,
+            detail="The exact solver is busy with another request right now. "
+                   "Try again in a moment, or leave \"Solve exactly\" unchecked.",
+        )
+    try:
+        yield
+    finally:
+        _exact_solve_lock.release()
+
 
 def _release_memory_to_os():
     """Hand freed memory back to the operating system.
@@ -523,7 +554,7 @@ def optimize(request: ScenarioRequest):
     # on two different days both solved an uncached baseline exactly, at the
     # same time, outside the lock - measured peak 247 MB against a 220 MB
     # ceiling. The expensive work is any exact solve, not just the last one.
-    guard = _exact_solve_lock if request.use_exact_solver else contextlib.nullcontext()
+    guard = _exact_solve_guard() if request.use_exact_solver else contextlib.nullcontext()
     with guard:
         # Hand in the cached baseline so only the recovery has to be solved.
         baseline = get_baseline(request.date, request.use_exact_solver)
@@ -596,7 +627,7 @@ def assignment(request: ScenarioRequest):
         get_gates(), request.closed_gates, request.closed_concourses
     )
 
-    with (_exact_solve_lock if request.use_exact_solver else contextlib.nullcontext()):
+    with (_exact_solve_guard() if request.use_exact_solver else contextlib.nullcontext()):
         baseline = get_baseline(request.date)
     gate_by_block_id = {}
     for position in baseline["assignment"]:
@@ -612,7 +643,7 @@ def assignment(request: ScenarioRequest):
             previous[position] = was
 
     solver = solver_ilp if request.use_exact_solver else solver_mcnf
-    guard = _exact_solve_lock if request.use_exact_solver else contextlib.nullcontext()
+    guard = _exact_solve_guard() if request.use_exact_solver else contextlib.nullcontext()
     with guard:
         solution = solver.solve(disrupted, open_gates, previous_assignment=previous)
     _release_memory_to_os()

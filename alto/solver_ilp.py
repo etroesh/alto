@@ -157,12 +157,19 @@ def build_model(blocks, gates, closed_gates=None):
 
 # CBC gets 150 seconds, not 300.
 #
-# nginx gives the API 180 seconds before returning a gateway timeout, so a
-# solver allowed to run for 300 guarantees that the slowest days come back to
-# the visitor as an error page rather than as an answer. That happened in
-# production. The limit here has to sit BELOW the proxy's, with room for the
-# rest of the request.
-DEFAULT_TIME_LIMIT_SECONDS = 150
+# nginx gives the API 180 seconds before returning a gateway timeout. That
+# budget is shared by TWO solves, not one: /api/optimize solves the baseline
+# (skipped only if a previous request already cached it) and then the
+# recovery, back to back, holding the same lock the whole time. At 150 each,
+# a cold day could ask for 300 seconds of CBC before nginx has any chance to
+# answer - which is exactly what happened on 2026-09-06: the visitor's
+# browser gave up long before the server did, and the still-running solve
+# kept the lock (and the memory) long enough to push the process over its
+# cgroup ceiling and stop answering *everything*, including /api/health.
+# 70 leaves both solves comfortably under the 180s ceiling with margin for
+# the database read, JSON, and the network - and is still well above the
+# 13-46s real solves actually take (see docs/decisions.md).
+DEFAULT_TIME_LIMIT_SECONDS = 70
 
 
 def solve(blocks, gates, closed_gates=None, time_limit_seconds=DEFAULT_TIME_LIMIT_SECONDS,
